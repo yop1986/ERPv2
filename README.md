@@ -10,6 +10,9 @@ Se configura un archivo con las dependencias del proyecto en [documentacion/depe
 - django 
 - crispy-bootstrap5
 
+*dependencias creadas por medio del comando __pip freeze > requirements.txt__*
+*dependencias restauradas por mdeio del comando __pip install -r requirements.txt__*
+
 ### Configuracion del proyecto
 
 Es necesario crear un nuevo proyecto
