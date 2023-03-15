@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static fields_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil "username" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.username }}
+        </div>
+    </div>
+  
+    <div class="row">
+        <div class="col-4"><strong>
+          {{ perfil.full_name_description }}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.get_full_name }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil "email" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.email }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil "date_joined" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.date_joined }}
+        </div>
+    </div>
+{% endblock %}
