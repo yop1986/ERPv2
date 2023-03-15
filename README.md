@@ -5,6 +5,11 @@ Versión mejorada
 
 ### Dependencias
 
+Se crea un ambiente virtual para mantener independencia en las configuraciones
+
+    ERPv2>virtualenv .venv
+    ERPv2>.venv\Scripts\activate.bat
+
 Se configura un archivo con las dependencias del proyecto en [documentacion/dependencias.txt](/documentacion/dependencias.txt) o se instalan las últimas versiones de los siguientes paquetes con __pip install__
 
 - django 
@@ -18,17 +23,17 @@ Se configura un archivo con las dependencias del proyecto en [documentacion/depe
 
 Es necesario crear un nuevo proyecto
 
-    > django-admin startproject Base Base/
+    (.venv) ERPv2> django-admin startproject Base Base/
 
-Para el ambiente de desarrollo se configura el archivo __Base/settings.py__
+Para el ambiente de desarrollo se configura el archivo __Base/Base/settings.py__
 
 Se utiliza para definir urls dinámicas (especificadas al final de esta configuración)
 
-    > from django.urls import reverse_lazy
+    from django.urls import reverse_lazy
 
 Se instalan las aplicaciones utilizadas y desarrolladas en el ERP 
 
-    > INSTALLED_APPS = [
+    INSTALLED_APPS = [
         ...
         'crispy_forms',
         'crispy_bootstrap5',
@@ -60,7 +65,7 @@ Se configuran las opciones de internacionalización (idioma y otras opciones) [I
     LANGUAGE_CODE = 'es-gt'
     TIME_ZONE = 'America/Guatemala'
     USE_I18N = True
-    USE_TZ = True
+    USE_TZ = False
 
 Se configura el servidor de correos de prueba para desarrollo
 
