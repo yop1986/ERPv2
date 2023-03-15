@@ -5,7 +5,10 @@ Versión mejorada
 
 ### Dependencias
 
-Se configura un archivo con las dependencias del proyecto en [documentacion/dependencias.txt](/documentacion/dependencias.txt)
+Se configura un archivo con las dependencias del proyecto en [documentacion/dependencias.txt](/documentacion/dependencias.txt) o se instalan las últimas versiones de los siguientes paquetes con __pip install__
+
+- django 
+- crispy-bootstrap5
 
 ### Configuracion del proyecto
 
