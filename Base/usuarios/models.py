@@ -10,11 +10,12 @@ class Usuario(AbstractUser):
     is_active_description = _('Estado')
 
     class Meta:
-        permissions = [
-            ('create_usuario', 'Permite la creación de usuarios'),
-            ('list_usuario', 'Permite listar todos los usuarios'),
-            ('update_usuario', 'Permite actualizar otros usuarios'),
-        ]
+        pass
+        #permissions = [
+        #    ('create_usuario', 'Permite la creación de usuarios'),
+        #    ('list_usuario', 'Permite listar todos los usuarios'),
+        #    ('update_usuario', 'Permite actualizar otros usuarios'),
+        #]
 
 class Perfil(models.Model):
     telefono    = models.CharField(_('Telefono'), max_length=12)
@@ -25,4 +26,21 @@ class Perfil(models.Model):
 
 class Regionalizacion(models.Model):
     nombre      = models.CharField(_('Nombre'), max_length=18)
-    padre_id    = models.ForeignKey('self', on_delete=models.CASCADE)
+    vigente     = models.BooleanField(_('Estado'), default=True)
+    usuario     = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True)
+    padre       = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['nombre', 'padre_id'], name='nombre_padre')
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+    def save(self, *args, **kwargs):
+        self.nombre = self.nombre.upper()
+        super(Regionalizacion, self).save(*args, **kwargs)
+    
+    def get_childs(self):
+        return Regionalizacion.objects.filter(padre=self.id)

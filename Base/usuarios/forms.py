@@ -37,3 +37,7 @@ class CustomUserUpdateForm(forms.ModelForm):
         if new.count():  
             raise ValidationError(_('El correo ya existe'))  
         return email 
+
+class RegionalizacionUploadForm(forms.Form):
+    pais        = forms.CharField(label=_('Pais'))
+    archivo     = forms.FileField()

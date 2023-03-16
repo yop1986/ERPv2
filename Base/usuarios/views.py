@@ -1,4 +1,5 @@
 import importlib
+from openpyxl import load_workbook
 
 from django.conf import settings
 from django.contrib.auth.decorators import permission_required
@@ -11,11 +12,9 @@ from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.urls import reverse_lazy
 
-from django.views.generic.base import TemplateView
-
-from .models import Usuario
-from .forms import CustomUserCreationForm, CustomUserUpdateForm
-from .personal_views import PersonalListView, PersonalFormView, PersonalUpdateView
+from .models import Usuario, Regionalizacion
+from .forms import CustomUserCreationForm, CustomUserUpdateForm, RegionalizacionUploadForm
+from .personal_views import PersonalTemplateView, PersonalListView, PersonalFormView, PersonalCreateView, PersonalUpdateView
 
 
 def BusquedaNombres(campos, valores):
@@ -73,8 +72,8 @@ class UsuarioPasswordResetDoneView(PasswordResetDoneView):
 
 
 class UsuarioPasswordResetConfirmView(PasswordResetConfirmView):
-    success_url = reverse_lazy("usuarios:password_reset_complete")
     template_name = "usuarios/password_reset_confirm.html"
+    success_url = reverse_lazy("usuarios:password_reset_complete")
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
         'opciones': {
@@ -105,8 +104,9 @@ class UsuarioPasswordChangeView(LoginRequiredMixin, SuccessMessageMixin, Passwor
     }
 
 
-class UsuarioPerfil(LoginRequiredMixin, TemplateView):
+class UsuarioPerfil(PersonalTemplateView):
     template_name = 'usuarios/perfil.html'
+    permission_required = 'usuarios.view_perfil'
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
         'title': _('Perfil'),
@@ -119,7 +119,7 @@ class UsuarioPerfil(LoginRequiredMixin, TemplateView):
 
 
 class UsuarioActualizar(PersonalUpdateView):
-    permission_required = ' usuarios.change_usuario'
+    permission_required = 'usuarios.change_perfil'
     model = Usuario
     fields = ['first_name', 'last_name', 'email']
     success_message = 'Usuario actualizado correctamente'
@@ -138,8 +138,8 @@ class UsuarioActualizar(PersonalUpdateView):
 
 class UsuarioNuevoFormView(PersonalFormView):
     template_name = 'usuarios/usuario_form.html'
+    permission_required = 'usuarios.add_usuario'
     form_class = CustomUserCreationForm
-    permission_required = 'usuarios.create_usuario'
     success_message = _('Usuario creado correctamente')
     success_url = reverse_lazy('usuarios:home')
     extra_context ={
@@ -157,10 +157,10 @@ class UsuarioNuevoFormView(PersonalFormView):
 
 
 class UsuarioListView(PersonalListView):
+    permission_required = 'usuarios.view_usuario'
     model = Usuario
     ordering = ('username')
     paginate_by = 12
-    permission_required = 'usuarios.list_usuario'
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
         'title': _('Lista de usuarios'),
@@ -186,11 +186,12 @@ class UsuarioListView(PersonalListView):
         else:
             return super(UsuarioListView, self).get_queryset()
 
+
 class UsuarioUpdateView(PersonalUpdateView):
     template_name = 'usuarios/usuario_form.html'
+    permission_required = 'usuarios.change_usuario'
     model = Usuario
     form_class = CustomUserUpdateForm
-    permission_required = ' usuarios.update_usuario'
     success_message = _('Usuario actualizado correctamente')
     success_url = reverse_lazy('usuarios:listar')
     extra_context ={
@@ -198,5 +199,84 @@ class UsuarioUpdateView(PersonalUpdateView):
         'title': _('Actualizar Usuarios'),
         'opciones': {
             'submit': _('Modificar'),
+        },
+    }
+
+
+class RegionalizacionCreateView(PersonalFormView):
+    template_name = 'usuarios/regionalizacion_uploadform.html'
+    permission_required = 'usuarios.add_regionalizacion'
+    form_class = RegionalizacionUploadForm
+    success_url = reverse_lazy('usuarios:listar')
+    success_message = _('Regionalización cargada correctamente')
+    extra_context ={
+        'general': settings.GENERAL_SITE_INFO,
+        'title': _('Cargar Regionalización'),
+        'opciones': {
+            'submit': _('Guardar'),
+        },
+    }
+
+    def form_valid(self, *args, **kwargs):
+        nombre_pais = self.request.POST["pais"].upper()
+        pais = Regionalizacion.objects.filter(nombre=nombre_pais, padre__isnull=True)
+        
+        if not pais:
+            Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
+            pais = Regionalizacion.objects.latest('id')
+        else:
+            pais = pais[0]
+
+        sheet = load_workbook(self.request.FILES['archivo']).active
+        for linea in sheet.iter_rows(min_row=2):
+            departamento_nombre = linea[0].value
+            municipio_nombre = linea[1].value
+            
+            departamento = Regionalizacion.objects.filter(nombre=departamento_nombre, padre=pais)
+            if not departamento_nombre is None and not departamento:
+                Regionalizacion.objects.create(nombre=departamento_nombre, usuario=self.request.user, padre=pais)
+                departamento = Regionalizacion.objects.latest('id')
+            else:
+                departamento = departamento[0]
+
+            municipio = Regionalizacion.objects.filter(nombre=municipio_nombre, padre=departamento)
+            if not municipio_nombre is None and not municipio:
+                Regionalizacion.objects.create(nombre=municipio_nombre, usuario=self.request.user, padre=departamento)
+
+        return super(RegionalizacionCreateView, self).form_valid(*args, **kwargs)
+
+
+class RegionalizacionListView(PersonalListView):
+    template_name = 'usuarios/regionalizacion_list.html'
+    permission_required = 'usuarios.view_regionalizacion'
+    model = Regionalizacion
+    extra_context ={
+        'general': settings.GENERAL_SITE_INFO,
+        'title': _('Listado de Regionalización'),
+        'opciones': {
+            'editar': _('Editar')
+        },
+    }
+
+    def get_queryset(self):
+        return None
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(RegionalizacionListView, self).get_context_data(*args, **kwargs)
+        context['object_list'] = Regionalizacion.objects.filter(padre__isnull=True).order_by('nombre')
+        return context
+
+
+class RegionalizacionUpdateView(PersonalUpdateView):
+    permission_required = 'usuarios.change_regionalizacion'
+    model = Regionalizacion
+    fields = ('nombre', 'vigente')
+    success_message = _('Actualización exitosa.')
+    success_url = reverse_lazy('usuarios:listar_regionalizacion')
+    extra_context ={
+        'general': settings.GENERAL_SITE_INFO,
+        'title': _('Actualización'),
+        'opciones': {
+            'submit': _('Actualizar')
         },
     }

@@ -19,6 +19,10 @@ urlpatterns = [
     path('usuarios/nuevo/', views.UsuarioNuevoFormView.as_view(), name='crear'),
     path('usuarios/listado/', views.UsuarioListView.as_view(), name='listar'),
     path('usuarios/actualizar/<uuid:pk>/', views.UsuarioUpdateView.as_view(), name='actualizar'),
+
+    path('regionalizacion/crear/', views.RegionalizacionCreateView.as_view(), name='cargar_regionalizacion'),
+    path('regionalizacion/listar/', views.RegionalizacionListView.as_view(), name='listar_regionalizacion'),
+    path('regionalizacion/editar/<int:pk>/', views.RegionalizacionUpdateView.as_view(), name='editar_regionalizacion')
 ]
 # --- urls para autenticación --- #
 # path('usuarios/', include('django.contrib.auth.urls')),

@@ -28,15 +28,32 @@
               </a>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="{% url 'usuarios:perfil' %}">{% translate "Perfil" %}</a></li>
+                {% if perms.usuarios.change_perfil %}
                 <li><a class="dropdown-item" href="{% url 'usuarios:actualizar' %}">{% translate "Actualizar Información" %}</a></li>
+                {% endif %}
                 <li><a class="dropdown-item" href="{% url 'usuarios:password_change' %}">{% translate "Cambiar Contraseña" %}</a></li>
                 
-                {% if perms.usuarios.create_usuario or perms.usuarios.list_usuario %}
+                {% if request.user.is_staff %}
                 <li><hr class="dropdown-divider"></li>
-                {% if perms.usuarios.create_usuario %}
+                <li><a class="dropdown-item" href="/admin/">Admin</a></li>
+                {% endif %}
+                
+                {% if perms.usuarios.add_regionalizacion or perms.usuarios.view_regionalizacion %}
+                <li><hr class="dropdown-divider"></li>
+                {% if perms.usuarios.add_regionalizacion %}
+                <li><a class="dropdown-item" href="{% url 'usuarios:cargar_regionalizacion' %}">{% translate "Cargar Regionalizacion" %}</a></li>
+                {% endif %}
+                {% if perms.usuarios.view_regionalizacion %}
+                <li><a class="dropdown-item" href="{% url 'usuarios:listar_regionalizacion' %}">{% translate "Listar Regionalizacion" %}</a></li>
+                {% endif %}
+                {% endif %}
+
+                {% if perms.usuarios.add_usuario or perms.usuarios.view_usuario %}
+                <li><hr class="dropdown-divider"></li>
+                {% if perms.usuarios.add_usuario %}
                 <li><a class="dropdown-item" href="{% url 'usuarios:crear' %}">{% translate "Crear Usuario" %}</a></li>
                 {% endif %}
-                {% if perms.usuarios.list_usuario %}
+                {% if perms.usuarios.view_usuario %}
                 <li><a class="dropdown-item" href="{% url 'usuarios:listar' %}">{% translate "Listar Usuarios" %}</a></li>
                 {% endif %}
                 {% endif %}
