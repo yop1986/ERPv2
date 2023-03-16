@@ -99,6 +99,11 @@ Plantillas base utilizando bootstrap5
     CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
     CRISPY_TEMPLATE_PACK = "bootstrap5"
 
+Manejador de carga de archivos excel
+
+    FILE_UPLOAD_HANDLERS = ("django_excel.ExcelMemoryFileUploadHandler",
+                            "django_excel.TemporaryExcelFileUploadHandler")
+
 Posterior a esta configuracion es necesario agregar las urls al proyecto base __Base/urls.py__
 
     path('', include('usuarios.urls')),
