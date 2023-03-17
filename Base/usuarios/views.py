@@ -32,6 +32,19 @@ def BusquedaNombres(campos, valores):
             q |= Q(**{f'{campo}' : valor})
     return q
 
+def app_installed(apps):
+    '''
+        Valida si la aplicacion esta instalada
+    '''
+    installed = list()
+    for app in apps:
+        if app in settings.INSTALLED_APPS:
+            installed.append(app)
+    return installed
+
+#
+#
+#    
 
 def home(request):
     info = {
@@ -39,9 +52,11 @@ def home(request):
         'contenido': {
             'title': _('Pagina Inicio'),
             'h1': _('Mi página'),
-        }
+        },
+        'apps': app_installed(settings.INFORMACION_APLICACIONES),
     }
     return render(request, 'home.html', info)
+
 
 
 class UsuarioLoginView(LoginView):
@@ -190,6 +205,9 @@ class UsuarioNuevoFormView(PersonalFormView):
 
 
 class UsuarioListView(PersonalListView):
+    '''
+        Lista de usuarios registrados en la aplicacion
+    '''
     permission_required = 'usuarios.view_usuario'
     model = Usuario
     ordering = ('username')
@@ -258,6 +276,9 @@ class UsuarioUpdateView(PersonalUpdateView):
 
 
 class RegionalizacionCreateView(PersonalFormView):
+    '''
+        Carga la informacion de departamentos/municipios para un país
+    '''
     template_name = 'usuarios/regionalizacion_uploadform.html'
     permission_required = 'usuarios.add_regionalizacion'
     form_class = RegionalizacionUploadForm
@@ -279,25 +300,28 @@ class RegionalizacionCreateView(PersonalFormView):
             Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
             pais = Regionalizacion.objects.latest('id')
         else:
-            pais = pais[0]
+            pais = pais.latest()
 
         sheet = load_workbook(self.request.FILES['archivo']).active
         for linea in sheet.iter_rows(min_row=2):
             departamento_nombre = linea[0].value
             municipio_nombre = linea[1].value
             
-            departamento = Regionalizacion.objects.filter(nombre=departamento_nombre, padre=pais)
-            if not departamento_nombre is None and not departamento:
-                Regionalizacion.objects.create(nombre=departamento_nombre, usuario=self.request.user, padre=pais)
-                departamento = Regionalizacion.objects.latest('id')
-            else:
-                departamento = departamento[0]
+            departamentos = Regionalizacion.objects.filter(padre=pais)
+            if not departamentos.filter(nombre=departamento_nombre):
+                departamento = self.insert_valores(departamento_nombre, pais)
+                departamentos = Regionalizacion.objects.filter(padre=pais)
 
-            municipio = Regionalizacion.objects.filter(nombre=municipio_nombre, padre=departamento)
-            if not municipio_nombre is None and not municipio:
-                Regionalizacion.objects.create(nombre=municipio_nombre, usuario=self.request.user, padre=departamento)
+            if not Regionalizacion.objects.filter(nombre=municipio_nombre, padre=departamento):
+                self.insert_valores(municipio_nombre, departamento)
 
         return super(RegionalizacionCreateView, self).form_valid(*args, **kwargs)
+
+    def insert_valores(self, valor, superior):
+        if not valor is None:
+            Regionalizacion.objects.create(nombre=valor, usuario=self.request.user, padre=superior)
+            return Regionalizacion.objects.latest('id')
+        return None
 
 
 class RegionalizacionListView(PersonalListView):
