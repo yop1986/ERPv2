@@ -27,7 +27,9 @@
                 {% translate "Usuario" %}
               </a>
               <ul class="dropdown-menu">
+                {% if perms.usuarios.view_perfil%}
                 <li><a class="dropdown-item" href="{% url 'usuarios:perfil' %}">{% translate "Perfil" %}</a></li>
+                {% endif %}
                 {% if perms.usuarios.change_perfil %}
                 <li><a class="dropdown-item" href="{% url 'usuarios:actualizar' %}">{% translate "Actualizar Información" %}</a></li>
                 {% endif %}

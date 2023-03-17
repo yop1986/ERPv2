@@ -119,11 +119,14 @@ class UsuarioPerfil(PersonalTemplateView):
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
         'title': _('Perfil'),
+        'etiquetas': {
+            'edad': _('Edad'),
+        }
     }
 
     def get_context_data(self):
         context = super(UsuarioPerfil, self).get_context_data()
-        context['perfil'] = Usuario.objects.get(pk=self.request.user.id)
+        context['object'] = Usuario.objects.get(pk=self.request.user.id)
         return context
 
 

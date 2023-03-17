@@ -8,84 +8,95 @@
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil "username" %}
+          {% get_verbose_field_name object "username" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.username }}
+          {{ object.username }}
         </div>
     </div>
   
     <div class="row">
         <div class="col-4"><strong>
-          {{ perfil.full_name_description }}
+          {{ object.full_name_description }}
         </strong></div>
         <div class="col-8">
-          {{ perfil.get_full_name }}
+          {{ object.get_full_name }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil "email" %}
+          {% get_verbose_field_name object "email" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.email }}
+          {{ object.email }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil.perfil "telefono" %}
+          {% get_verbose_field_name object.perfil "telefono" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.perfil.telefono }}
+          {{ object.perfil.telefono }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil.perfil "celular" %}
+          {% get_verbose_field_name object.perfil "celular" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.perfil.celular }}
+          {{ object.perfil.celular }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil.perfil "dpi" %}
+          {% get_verbose_field_name object.perfil "dpi" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.perfil.dpi }}
+          {{ object.perfil.dpi }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil.perfil "nit" %}
+          {% get_verbose_field_name object.perfil "nit" %}
         </strong></div>
         <div class="col-8">
-          {{ perfil.perfil.nit }}
+          {{ object.perfil.nit }}
         </div>
     </div>
 
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil.perfil "fecha_nacimiento" %}
+          {% get_verbose_field_name object.perfil "fecha_nacimiento" %}
         </strong></div>
         <div class="col-8">
-          {% if perfil.perfil.fecha_nacimiento %}
-          {{ perfil.perfil.fecha_nacimiento }}
+          {% if object.perfil.fecha_nacimiento %}
+          {{ object.perfil.fecha_nacimiento }}
           {% endif %}
         </div>
     </div>
 
+    {% if object.perfil.fecha_nacimiento %}
     <div class="row">
         <div class="col-4"><strong>
-          {% get_verbose_field_name perfil "date_joined" %}
+          {{ etiquetas.edad }}
         </strong></div>
         <div class="col-8">
-          {{ perfil.date_joined }}
+          {{ object.perfil.get_edad }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name object "date_joined" %}
+        </strong></div>
+        <div class="col-8">
+          {{ object.date_joined }}
         </div>
     </div>
 {% endblock %}
