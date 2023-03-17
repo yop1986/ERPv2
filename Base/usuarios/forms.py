@@ -5,7 +5,12 @@ from django.utils.translation import gettext as _
 #from django.contrib.auth import get_user_model
 
 #Usuario = get_user_model()
-from .models import Usuario
+from .models import Usuario, Perfil
+
+
+class DateInput(forms.DateInput):
+    input_type = 'date'
+
 
 class CustomUserCreationForm(UserCreationForm): 
     class Meta:
@@ -27,6 +32,10 @@ class CustomUserCreationForm(UserCreationForm):
         return email  
 
 class CustomUserUpdateForm(forms.ModelForm):
+    '''
+        Actualización de usuarios terceros
+        Como una funcion administrativa
+    '''
     class Meta:
         model = Usuario
         fields = ('first_name', 'last_name', 'email')
@@ -38,6 +47,17 @@ class CustomUserUpdateForm(forms.ModelForm):
             raise ValidationError(_('El correo ya existe'))  
         return email 
 
+
+class PerfilForm(forms.ModelForm):
+    class Meta:
+        model = Perfil
+        fields = ('telefono', 'celular', 'dpi', 'nit', 'fecha_nacimiento')
+        widgets = {
+            'fecha_nacimiento': DateInput(format='%Y-%m-%d'),
+        }
+
+
 class RegionalizacionUploadForm(forms.Form):
     pais        = forms.CharField(label=_('Pais'))
     archivo     = forms.FileField()
+

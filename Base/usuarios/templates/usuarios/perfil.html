@@ -35,6 +35,53 @@
 
     <div class="row">
         <div class="col-4"><strong>
+          {% get_verbose_field_name perfil.perfil "telefono" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.perfil.telefono }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil.perfil "celular" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.perfil.celular }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil.perfil "dpi" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.perfil.dpi }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil.perfil "nit" %}
+        </strong></div>
+        <div class="col-8">
+          {{ perfil.perfil.nit }}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
+          {% get_verbose_field_name perfil.perfil "fecha_nacimiento" %}
+        </strong></div>
+        <div class="col-8">
+          {% if perfil.perfil.fecha_nacimiento %}
+          {{ perfil.perfil.fecha_nacimiento }}
+          {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4"><strong>
           {% get_verbose_field_name perfil "date_joined" %}
         </strong></div>
         <div class="col-8">

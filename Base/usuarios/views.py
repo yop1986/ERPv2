@@ -8,23 +8,29 @@ from django.contrib.auth.views import (LoginView, LogoutView, PasswordResetConfi
     PasswordResetView, PasswordResetDoneView, PasswordResetCompleteView, PasswordChangeView)
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Q
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.urls import reverse_lazy
 
 from .models import Usuario, Regionalizacion
-from .forms import CustomUserCreationForm, CustomUserUpdateForm, RegionalizacionUploadForm
-from .personal_views import PersonalTemplateView, PersonalListView, PersonalFormView, PersonalCreateView, PersonalUpdateView
+from .forms import CustomUserCreationForm, CustomUserUpdateForm, PerfilForm, RegionalizacionUploadForm
+from .personal_views import (PersonalTemplateView, PersonalListView, PersonalFormView, 
+    PersonalUpdateView)
 
 
 def BusquedaNombres(campos, valores):
+    '''
+        Permite generar una busqueda compleja de multiples valores en multiples campos
+        por medio de sentencias OR
+        campos: campo y tipo de consulta (ej. [nombre__icontains, apellido__icontains])
+        valores: valores a buscar en la consulta OR separado por espacio (ej. pablo godoy) 
+    '''
     q = Q()
     for campo in campos:
         for valor in valores:
             q |= Q(**{f'{campo}' : valor})
     return q
-
-
 
 
 def home(request):
@@ -105,6 +111,9 @@ class UsuarioPasswordChangeView(LoginRequiredMixin, SuccessMessageMixin, Passwor
 
 
 class UsuarioPerfil(PersonalTemplateView):
+    '''
+        Muestra la información del perfil de usuario
+    '''
     template_name = 'usuarios/perfil.html'
     permission_required = 'usuarios.view_perfil'
     extra_context ={
@@ -119,6 +128,10 @@ class UsuarioPerfil(PersonalTemplateView):
 
 
 class UsuarioActualizar(PersonalUpdateView):
+    '''
+        Actualización del usuario que está logueado actualmente
+        (Unicamente actualiza el propio perfil)
+    '''
     permission_required = 'usuarios.change_perfil'
     model = Usuario
     fields = ['first_name', 'last_name', 'email']
@@ -134,6 +147,23 @@ class UsuarioActualizar(PersonalUpdateView):
 
     def get_object(self):
         return Usuario.objects.get(pk=self.request.user.id)
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(UsuarioActualizar, self).get_context_data(*args, **kwargs)
+        context['aditional_form'] = PerfilForm(instance=self.request.user.perfil)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        aditional_form = PerfilForm(request.POST or None, instance=self.object.perfil)
+
+        if form.is_valid() and aditional_form.is_valid():
+            form.save()
+            aditional_form.save()
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            return super(UsuarioActualizar, self).form_invalid(form)
 
 
 class UsuarioNuevoFormView(PersonalFormView):
@@ -188,6 +218,10 @@ class UsuarioListView(PersonalListView):
 
 
 class UsuarioUpdateView(PersonalUpdateView):
+    '''
+        Actualización de usuarios terceros
+        Como una funcion administrativa
+    '''
     template_name = 'usuarios/usuario_form.html'
     permission_required = 'usuarios.change_usuario'
     model = Usuario
@@ -201,6 +235,23 @@ class UsuarioUpdateView(PersonalUpdateView):
             'submit': _('Modificar'),
         },
     }
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(UsuarioUpdateView, self).get_context_data(*args, **kwargs)
+        context['aditional_form'] = PerfilForm(instance=self.object.perfil)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.form_class(request.POST, instance=self.object)
+        aditional_form = PerfilForm(request.POST, instance=self.object.perfil)
+
+        if form.is_valid() and aditional_form.is_valid():
+            form.save()
+            aditional_form.save()
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            return super(UsuarioUpdateView, self).form_invalid(form)
 
 
 class RegionalizacionCreateView(PersonalFormView):

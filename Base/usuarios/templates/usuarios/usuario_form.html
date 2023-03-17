@@ -14,6 +14,10 @@
       
       {{ form|crispy }}
 
+      {% if aditional_form %}
+      {{ aditional_form|crispy }}
+      {% endif %}
+
       <input type="submit" value="{{ opciones.submit }}" name="" class="btn btn-primary">
     </form>
 {% endblock %}

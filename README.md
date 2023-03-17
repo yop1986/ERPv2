@@ -14,6 +14,7 @@ Se configura un archivo con las dependencias del proyecto en [documentacion/depe
 
 - django 
 - crispy-bootstrap5
+- pip install openpyxl
 
 *dependencias creadas por medio del comando __pip freeze > requirements.txt__*
 
