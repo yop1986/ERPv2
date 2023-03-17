@@ -302,30 +302,51 @@ class RegionalizacionCreateView(PersonalFormView):
         else:
             pais = pais.latest('id')
 
-        departamentos = Regionalizacion.objects.filter(padre=pais)
+        departamentos_list = list()
+        municipios_list = list()
         
+        departamentos, municipios = self._cargar_informacion()
+        
+        qryset_deptos = Regionalizacion.objects.filter(padre=pais)
+        
+        for departamento in departamentos:
+            if not qryset_deptos.filter(nombre=departamento).exists():
+                # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
+                departamentos_list.append(Regionalizacion(nombre=departamento, usuario=self.request.user, padre=pais))
+
+        Regionalizacion.objects.bulk_create(departamentos_list)   
+        qryset_municipios = Regionalizacion.objects.prefetch_related('self').filter(padre__padre=pais)
+        
+        for municipio in municipios:
+            #valro[0]: departamento, valor[1]: municipio
+            valor = municipio.split(',') 
+            if not qryset_municipios.filter(nombre=valor[1], padre__nombre=valor[0]).exists():
+                # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
+                municipios_list.append(Regionalizacion(nombre=valor[1], usuario=self.request.user, 
+                    padre=qryset_deptos.filter(nombre=valor[0]).latest('id')))
+
+        Regionalizacion.objects.bulk_create(municipios_list)
+
+        return super(RegionalizacionCreateView, self).form_valid(*args, **kwargs)
+
+    def _cargar_informacion(self):
+        '''
+            Carga la información sin repetidos
+        '''
+        departamentos = list()
+        municipios = list()
+
         sheet = load_workbook(self.request.FILES['archivo']).active
         for linea in sheet.iter_rows(min_row=2):
             departamento_nombre = linea[0].value
             municipio_nombre = linea[1].value
-            
-            departamento = departamentos.filter(nombre=departamento_nombre)
-            if not departamentos or not departamento:
-                departamento = self.insert_valores(departamento_nombre, pais)
-                departamentos = Regionalizacion.objects.filter(padre=pais)
-            else:
-                departamento = departamento.latest('id')
 
-            if not Regionalizacion.objects.filter(nombre=municipio_nombre, padre=departamento):
-                self.insert_valores(municipio_nombre, departamento)
+            if not departamento_nombre in departamentos:
+                departamentos.append(f'{departamento_nombre}')
+            if not f'{departamento_nombre},{municipio_nombre}' in municipios:
+                municipios.append(f'{departamento_nombre},{municipio_nombre}')
 
-        return super(RegionalizacionCreateView, self).form_valid(*args, **kwargs)
-
-    def insert_valores(self, valor, superior):
-        if not valor is None:
-            Regionalizacion.objects.create(nombre=valor, usuario=self.request.user, padre=superior)
-            return Regionalizacion.objects.latest('id')
-        return None
+        return departamentos, municipios
 
 
 class RegionalizacionListView(PersonalListView):

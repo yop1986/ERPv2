@@ -64,4 +64,4 @@ class Regionalizacion(models.Model):
         super(Regionalizacion, self).save(*args, **kwargs)
     
     def get_childs(self):
-        return Regionalizacion.objects.filter(padre=self.id)
+        return Regionalizacion.objects.filter(padre=self.id).order_by('nombre')
