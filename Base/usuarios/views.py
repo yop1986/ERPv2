@@ -282,7 +282,7 @@ class RegionalizacionCreateView(PersonalFormView):
     template_name = 'usuarios/regionalizacion_uploadform.html'
     permission_required = 'usuarios.add_regionalizacion'
     form_class = RegionalizacionUploadForm
-    success_url = reverse_lazy('usuarios:listar')
+    success_url = reverse_lazy('usuarios:listar_regionalizacion')
     success_message = _('Regionalización cargada correctamente')
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
@@ -300,17 +300,21 @@ class RegionalizacionCreateView(PersonalFormView):
             Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
             pais = Regionalizacion.objects.latest('id')
         else:
-            pais = pais.latest()
+            pais = pais.latest('id')
 
+        departamentos = Regionalizacion.objects.filter(padre=pais)
+        
         sheet = load_workbook(self.request.FILES['archivo']).active
         for linea in sheet.iter_rows(min_row=2):
             departamento_nombre = linea[0].value
             municipio_nombre = linea[1].value
             
-            departamentos = Regionalizacion.objects.filter(padre=pais)
-            if not departamentos.filter(nombre=departamento_nombre):
+            departamento = departamentos.filter(nombre=departamento_nombre)
+            if not departamentos or not departamento:
                 departamento = self.insert_valores(departamento_nombre, pais)
                 departamentos = Regionalizacion.objects.filter(padre=pais)
+            else:
+                departamento = departamento.latest('id')
 
             if not Regionalizacion.objects.filter(nombre=municipio_nombre, padre=departamento):
                 self.insert_valores(municipio_nombre, departamento)
