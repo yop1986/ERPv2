@@ -134,9 +134,6 @@ class UsuarioPerfil(PersonalTemplateView):
     extra_context ={
         'general': settings.GENERAL_SITE_INFO,
         'title': _('Perfil'),
-        'etiquetas': {
-            'edad': _('Edad'),
-        }
     }
 
     def get_context_data(self):

@@ -32,6 +32,7 @@ Para el ambiente de desarrollo se configura el archivo __Base/Base/settings.py__
 Se utiliza para definir urls dinámicas (especificadas al final de esta configuración)
 
     from django.urls import reverse_lazy
+    from django.utils.translation import gettext as _
 
 Se instalan las aplicaciones utilizadas y desarrolladas en el ERP 
 
@@ -91,6 +92,14 @@ Se definen variables globales, utilizadas en toda la aplicacion
     ###
     GENERAL_SITE_INFO = {
         'nombre_sitio': 'ERPv2',
+    }
+    # esta información para cada una de las apps instaladas
+    INFORMACION_APLICACIONES = {
+        'app': {
+            'nombre': _(''),
+            'descripcion': _(''),
+            'imagen': _(''),
+        }
     }
 
 Modelo de usuario personalización así como opciones de redireccionamiento utilizadas por las pantallas de logueo.

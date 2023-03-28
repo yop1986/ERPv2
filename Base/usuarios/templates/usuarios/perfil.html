@@ -83,7 +83,7 @@
     {% if object.perfil.fecha_nacimiento %}
     <div class="row">
         <div class="col-4"><strong>
-          {{ etiquetas.edad }}
+          {{ object.perfil.edad_description }}
         </strong></div>
         <div class="col-8">
           {{ object.perfil.get_edad }}

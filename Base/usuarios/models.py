@@ -17,8 +17,6 @@ class Usuario(AbstractUser):
         pass
         #permissions = [
         #    ('create_usuario', 'Permite la creación de usuarios'),
-        #    ('list_usuario', 'Permite listar todos los usuarios'),
-        #    ('update_usuario', 'Permite actualizar otros usuarios'),
         #]
 
 
@@ -29,6 +27,8 @@ class Perfil(models.Model):
     nit         = models.CharField(_('Nit'), max_length=10, blank=True)
     fecha_nacimiento = models.DateField(_('Fecha de nacimiento'), null=True, blank=True)
     usuario     = models.OneToOneField(Usuario, on_delete = models.CASCADE)
+
+    edad_description = _('Edad')
 
     def __str__(self):
         return f'Perfil: {self.usuario.username}'
