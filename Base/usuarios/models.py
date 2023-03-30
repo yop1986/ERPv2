@@ -46,7 +46,7 @@ def save_usuario_perfil(sender, instance, **kwargs):
     instance.perfil.save()
 
 class Regionalizacion(models.Model):
-    nombre      = models.CharField(_('Nombre'), max_length=18)
+    nombre      = models.CharField(_('Nombre'), max_length=60)
     vigente     = models.BooleanField(_('Estado'), default=True)
     usuario     = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True)
     padre       = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)

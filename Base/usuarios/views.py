@@ -307,20 +307,21 @@ class RegionalizacionCreateView(PersonalFormView):
         qryset_deptos = Regionalizacion.objects.filter(padre=pais)
         
         for departamento in departamentos:
-            if not qryset_deptos.filter(nombre=departamento).exists():
+            nombre = departamento[:60].upper()
+            if not qryset_deptos.filter(nombre=nombre).exists():
                 # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
-                departamentos_list.append(Regionalizacion(nombre=departamento, usuario=self.request.user, padre=pais))
+                departamentos_list.append(Regionalizacion(nombre=nombre, usuario=self.request.user, padre=pais))
 
         Regionalizacion.objects.bulk_create(departamentos_list)   
         qryset_municipios = Regionalizacion.objects.prefetch_related('self').filter(padre__padre=pais)
         
-        for municipio in municipios:
-            #valro[0]: departamento, valor[1]: municipio
-            valor = municipio.split(',') 
-            if not qryset_municipios.filter(nombre=valor[1], padre__nombre=valor[0]).exists():
+        for info_municipio in municipios:
+            valor = info_municipio.upper().split(',')
+
+            if not qryset_municipios.filter(nombre=valor[1][:60], padre__nombre=valor[0][:60]).exists():
                 # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
-                municipios_list.append(Regionalizacion(nombre=valor[1], usuario=self.request.user, 
-                    padre=qryset_deptos.filter(nombre=valor[0]).latest('id')))
+                municipios_list.append(Regionalizacion(nombre=valor[1][:60], usuario=self.request.user, 
+                    padre=qryset_deptos.filter(nombre=valor[0][:60]).latest('id')))
 
         Regionalizacion.objects.bulk_create(municipios_list)
 
