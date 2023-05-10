@@ -20,6 +20,8 @@
         <div class="collapse navbar-collapse" id="navbarScroll">
           <ul class="navbar-nav me-auto my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
             {% block navbar %}
+
+            {% block navbar_seccion_inicio %}{% endblock %}
             
             {% if user.is_authenticated %}
             <li class="nav-item dropdown">
@@ -72,11 +74,11 @@
               </a>
             </li>
             {% endif %}
-            
-            <li class="nav-item">
-              <a class="nav-link disabled">Link</a>
-            </li>
+
+            {% block navbar_seccion_final %}{% endblock %}
           {% endblock %}
+          
+          
           </ul>
           <form class="d-flex" role="search" method="GET">
             <input class="form-control me-2" type="search" placeholder="" aria-label="Search" name="valor" value="{{ request.GET.valor }}">

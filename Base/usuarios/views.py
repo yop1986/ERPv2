@@ -39,7 +39,7 @@ def app_installed(apps):
     installed = list()
     for app in apps:
         if app in settings.INSTALLED_APPS:
-            installed.append(app)
+            installed.append(apps[app])
     return installed
 
 #
@@ -50,10 +50,13 @@ def home(request):
     info = {
         'general': settings.GENERAL_SITE_INFO,
         'contenido': {
-            'title': _('Pagina Inicio'),
-            'h1': _('Mi página'),
+            'title': _('ERPv2'),
+            'h1': _('Aplicaciones instaladas'),
         },
         'apps': app_installed(settings.INFORMACION_APLICACIONES),
+        'opciones': {
+            'ir': _('Ir'),
+        },
     }
     return render(request, 'home.html', info)
 
