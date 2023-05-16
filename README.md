@@ -32,7 +32,6 @@ Para el ambiente de desarrollo se configura el archivo __Base/Base/settings.py__
 Se utiliza para definir urls dinámicas (especificadas al final de esta configuración)
 
     from django.urls import reverse_lazy
-    from django.utils.translation import gettext as _
 
 Se instalan las aplicaciones utilizadas y desarrolladas en el ERP 
 
@@ -74,6 +73,12 @@ Se configuran las opciones de internacionalización (idioma y otras opciones) [I
     USE_I18N = True
     USE_TZ = False
 
+Se configura la ruta general de archivso estatic
+
+    STATICFILES_DIRS = [
+        BASE_DIR / "static",
+    ]
+
 Se configura el servidor de correos de prueba para desarrollo
 
     ###
@@ -83,16 +88,15 @@ Se configura el servidor de correos de prueba para desarrollo
         EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     else:
         pass
-        
+
+Existe un archivo de configuracion en el directorio Base\Static, en el cual es necesario validar elementos utilizados para la aplicacion en general bajo el formato 
+
+    [sección]
+    # Comentarios
+    variable = valor
 
 Se definen variables globales, utilizadas en toda la aplicacion
 
-    ###
-    ### Variables Globales
-    ###
-    GENERAL_SITE_INFO = {
-        'nombre_sitio': 'ERPv2',
-    }
     # esta información para cada una de las apps instaladas
     INFORMACION_APLICACIONES = {
         'app': {
