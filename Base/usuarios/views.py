@@ -13,11 +13,21 @@ from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.urls import reverse_lazy
 
+from .app_funciones import Configuraciones
 from .models import Usuario, Regionalizacion
 from .forms import CustomUserCreationForm, CustomUserUpdateForm, PerfilForm, RegionalizacionUploadForm
 from .personal_views import (PersonalTemplateView, PersonalListView, PersonalFormView, 
     PersonalUpdateView)
 
+#
+# LECTURA DE ARCHIVO DE CONFIGURACIÓN
+#
+
+gConfiguracion = Configuraciones()
+
+#
+# FUNCIONES GENERICAS
+#
 
 def BusquedaNombres(campos, valores):
     '''
@@ -43,12 +53,14 @@ def app_installed(apps):
     return installed
 
 #
-#
+# FUNCIONES Y VISTAS GENERICAS
 #    
 
 def home(request):
     info = {
-        'general': settings.GENERAL_SITE_INFO,
+        'general': {
+            'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')
+        },
         'contenido': {
             'title': _('ERPv2'),
             'h1': _('Aplicaciones instaladas'),
@@ -65,13 +77,17 @@ def home(request):
 class UsuarioLoginView(LoginView):
     template_name = "usuarios/login.html"
     extra_context = {
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Página de ingreso'),
         'opciones': {
             'submit': _('Ingresar'),
             'reset': _('He olvidado la contraseña'),
         },
     }
+
+    def get_context_data(self):
+        context = super(UsuarioLoginView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
 
 class UsuarioLogoutView(LogoutView):
@@ -84,11 +100,15 @@ class UsuarioPasswordResetView(PasswordResetView):
     email_template_name = "usuarios/password_reset_email.html"
     success_url = reverse_lazy("usuarios:password_reset_done")
     extra_context = {
-        'general': settings.GENERAL_SITE_INFO,
         'opciones': {
             'submit': _('Soliciar'),
         },
     }
+
+    def get_context_data(self):
+        context = super(UsuarioPasswordResetView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
 
 class UsuarioPasswordResetDoneView(PasswordResetDoneView):
@@ -99,21 +119,29 @@ class UsuarioPasswordResetConfirmView(PasswordResetConfirmView):
     template_name = "usuarios/password_reset_confirm.html"
     success_url = reverse_lazy("usuarios:password_reset_complete")
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'opciones': {
             'submit': _('Cambiar')
         },
     }
 
+    def get_context_data(self):
+        context = super(UsuarioPasswordResetConfirmView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
+
 
 class UsuarioPasswordResetCompleteView(PasswordResetCompleteView):
     template_name = "usuarios/password_reset_complete.html"
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'opciones': {
             'ingresar': _('Ingresar')
         },
     }
+
+    def get_context_data(self):
+        context = super(UsuarioPasswordResetCompleteView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
 
 class UsuarioPasswordChangeView(LoginRequiredMixin, SuccessMessageMixin, PasswordChangeView):
@@ -121,11 +149,15 @@ class UsuarioPasswordChangeView(LoginRequiredMixin, SuccessMessageMixin, Passwor
     success_message = 'Contraseña cambiada correctamente'
     success_url = reverse_lazy('usuarios:perfil')
     extra_context = {
-        'general': settings.GENERAL_SITE_INFO,
         'opciones': {
             'submit': _('Cambiar'),
         },
     }
+
+    def get_context_data(self):
+        context = super(UsuarioPasswordChangeView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
 
 class UsuarioPerfil(PersonalTemplateView):
@@ -135,12 +167,12 @@ class UsuarioPerfil(PersonalTemplateView):
     template_name = 'usuarios/perfil.html'
     permission_required = 'usuarios.view_perfil'
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Perfil'),
     }
 
     def get_context_data(self):
         context = super(UsuarioPerfil, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['object'] = Usuario.objects.get(pk=self.request.user.id)
         return context
 
@@ -156,7 +188,6 @@ class UsuarioActualizar(PersonalUpdateView):
     success_message = 'Usuario actualizado correctamente'
     success_url = reverse_lazy('usuarios:perfil')
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Actualización de datos'),
         'opciones': {
             'submit': _('Modificar'),
@@ -168,6 +199,7 @@ class UsuarioActualizar(PersonalUpdateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(UsuarioActualizar, self).get_context_data(*args, **kwargs)
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['aditional_form'] = PerfilForm(instance=self.request.user.perfil)
         return context
 
@@ -191,7 +223,6 @@ class UsuarioNuevoFormView(PersonalFormView):
     success_message = _('Usuario creado correctamente')
     success_url = reverse_lazy('usuarios:home')
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Creación de usuario'),
         'opciones': {
             'submit': _('Crear'),
@@ -203,6 +234,11 @@ class UsuarioNuevoFormView(PersonalFormView):
             form.save()
         return super(UsuarioNuevoFormView, self).form_valid(form)
 
+    def get_context_data(self):
+        context = super(UsuarioNuevoFormView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
+
 
 class UsuarioListView(PersonalListView):
     '''
@@ -213,13 +249,17 @@ class UsuarioListView(PersonalListView):
     ordering = ('username')
     paginate_by = 12
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Lista de usuarios'),
         'opciones': {
             'etiqueta': _('Opciones'),
             'editar': _('Editar'),
         },
     }
+
+    def get_context_data(self):
+        context = super(UsuarioListView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
     def get_queryset(self):
         valor_busqueda = self.request.GET.get('valor')
@@ -250,7 +290,6 @@ class UsuarioUpdateView(PersonalUpdateView):
     success_message = _('Usuario actualizado correctamente')
     success_url = reverse_lazy('usuarios:listar')
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Actualizar Usuarios'),
         'opciones': {
             'submit': _('Modificar'),
@@ -259,6 +298,7 @@ class UsuarioUpdateView(PersonalUpdateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(UsuarioUpdateView, self).get_context_data(*args, **kwargs)
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['aditional_form'] = PerfilForm(instance=self.object.perfil)
         return context
 
@@ -285,12 +325,16 @@ class RegionalizacionCreateView(PersonalFormView):
     success_url = reverse_lazy('usuarios:listar_regionalizacion')
     success_message = _('Regionalización cargada correctamente')
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Cargar Regionalización'),
         'opciones': {
             'submit': _('Guardar'),
         },
     }
+
+    def get_context_data(self):
+        context = super(RegionalizacionCreateView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
 
     def form_valid(self, *args, **kwargs):
         nombre_pais = self.request.POST["pais"].upper()
@@ -355,7 +399,6 @@ class RegionalizacionListView(PersonalListView):
     permission_required = 'usuarios.view_regionalizacion'
     model = Regionalizacion
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Listado de Regionalización'),
         'opciones': {
             'editar': _('Editar')
@@ -367,6 +410,7 @@ class RegionalizacionListView(PersonalListView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(RegionalizacionListView, self).get_context_data(*args, **kwargs)
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['object_list'] = Regionalizacion.objects.filter(padre__isnull=True).order_by('nombre')
         return context
 
@@ -378,9 +422,13 @@ class RegionalizacionUpdateView(PersonalUpdateView):
     success_message = _('Actualización exitosa.')
     success_url = reverse_lazy('usuarios:listar_regionalizacion')
     extra_context ={
-        'general': settings.GENERAL_SITE_INFO,
         'title': _('Actualización'),
         'opciones': {
             'submit': _('Actualizar')
         },
     }
+
+    def get_context_data(self):
+        context = super(RegionalizacionUpdateView, self).get_context_data()
+        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
+        return context
