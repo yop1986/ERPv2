@@ -1,0 +1,12 @@
+{% extends 'qlik_base.html' %}
+{% load static crispy_forms_tags %}
+
+{% block content_detail %}
+    <form method="post">
+      {% csrf_token %}
+      
+      {{ form|crispy }}
+
+      <input type="submit" value="{{ opciones.submit }}" name="" class="btn btn-primary">
+    </form>
+{% endblock %}

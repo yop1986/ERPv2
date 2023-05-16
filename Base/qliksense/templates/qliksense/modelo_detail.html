@@ -1,0 +1,82 @@
+{% extends 'qlik_base.html' %}
+{% load static i18n fields_tags %}
+
+{% block h1_title %}{{ title }}: {{ object }}{% endblock %}
+
+{% block content_detail %}
+<div class="row">
+    <div class="col-4"><strong>
+        {% get_verbose_field_name object "descripcion" %}
+    </strong></div>
+    <div class="col-8">
+        {{ object.descripcion }}
+    </div>
+
+    <div class="col-4"><strong>
+        {% get_verbose_field_name object "stream" %}
+    </strong></div>
+    <div class="col-8">
+        <a href="{% url 'qliksense:view_stream' object.stream.id %}">{{ object.stream }}</a>
+    </div>
+
+    <div class="col-4"><strong>
+        {% translate 'Estado' %}
+    </strong></div>
+    <div class="col-8">
+        {% get_descripcion_estados object.vigente 1 %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-4"><strong>
+        {{ opciones.etiqueta }}
+    </strong></div>
+    <div class="col-8">
+        <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
+        {% if perms.qliksense.change_stream %}
+        <a href="{% url 'qliksense:change_stream' object.id %}" class="btn btn-primary">
+            {{ opciones.change }}
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <h3>{{ subtitle.campos }}</h3>
+    {% if campos %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">{% get_verbose_field_name campos.0 "descripcion" %}</th>
+          <th scope="col">{% get_verbose_field_name campos.0 "vigente" %}</th>
+          <th scope="col">{{ opciones.etiqueta }}</th>
+        </tr>
+      </thead> 
+
+      {% for modelo in campos %}
+        <tr>
+          <th scope="row">{{ forloop.counter }}</td>
+          <td>{{ modelo.descripcion }}</td>
+          <td>{% get_descripcion_estados modelo.vigente 1 %}</td>
+          <td>
+            <a href="{{ modelo.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
+            {% if perms.qliksense.view_stream %}
+            <a href="{% url 'qliksense:view_modelo' modelo.id %}" class="btn btn-primary">
+            {{ opciones.view }}
+            </a>
+            {% endif %}
+            {% if perms.qliksense.change_stream %}
+            <a href="{% url 'qliksense:change_modelo' modelo.id %}" class="btn btn-primary">
+            {{ opciones.change }}
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>{% translate "No hay registros para mostrar." %}</p>
+    {% endif %}
+</div>
+{% endblock %}

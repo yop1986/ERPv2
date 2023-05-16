@@ -1,0 +1,18 @@
+{% extends 'qlik_base.html' %}
+{% load static %}
+
+{% block content_detail %}
+     <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+        {% for key, values in objects.items %}
+      <div class="feature col">
+        <div class="feature-icon bg-primary bg-gradient">
+          <img src="{% static '/images/' %}{{values.imagen}}" height="60px">
+        </div>
+        <h2>{{ values.nombre }}</h2>
+        <p>{{ values.descripcion }}</p>
+        <a href="{% url 'qliksense:list_'|add:values.link_clase %}" class="btn btn-primary">{{ opciones.list }}</a>
+        <a href="{% url 'qliksense:add_'|add:values.link_clase %}" class="btn btn-primary">{{ opciones.add }}</a>
+      </div>
+      {% endfor %}
+    </div>
+{% endblock %}

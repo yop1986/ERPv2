@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar_seccion_inicio %} 
+  {% include 'qlik_navbar.html' %}
+{% endblock %}
+
+{% block content %}
+    <div class="row align-items-start">
+      <div class="col-11">
+        <h1>
+        {% block h1_title %}
+          {{ title }}
+        {% endblock %}
+        </h1>
+      </div>
+      <div class="col">
+        {% block h1_button %}
+        {% if link_clase %}
+        <a href="{% url 'qliksense:list_'|add:link_clase %}">
+          <img src="{% static 'images/qs_list.png' %}" class="rounded float-right" alt="Agregar" height="48px">
+        </a>
+        {% endif %}
+        {% endblock %}
+      </div>
+    </div>
+
+     {% block content_detail %}
+     {% endblock %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'qlik_base.html' %}
+{% load static i18n fields_tags %}
+
+{% block h1_button %}
+<a href="{% url 'qliksense:add_'|add:link_clase %}">
+<img src="{% static 'images/qs_add.png' %}" class="rounded float-right" alt="Agregar" height="48px">
+</a>
+{% endblock %}
+        
+{% block content_detail %}
+  {% if object_list %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">{% get_verbose_field_name object_list.0 "descripcion" %}</th>
+          <th scope="col">{% get_verbose_field_name object_list.0 "vigente" %}</th>
+          <th scope="col">{{ opciones.etiqueta }}</th>
+        </tr>
+      </thead> 
+
+      {% for object in object_list %}
+        <tr>
+          <th scope="row">{{ forloop.counter0|add:page_obj.start_index }}</td>
+          <td>{{ object.descripcion }}</td>
+          <td>{% get_descripcion_estados object.vigente 1 %}</td>
+          <td>
+            <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
+            {% if perms.qliksense.view_stream %}
+            <a href="{% url 'qliksense:view_stream' object.id %}" class="btn btn-primary">
+            {{ opciones.view }}
+            </a>
+            {% endif %}
+            {% if perms.qliksense.change_stream %}
+            <a href="{% url 'qliksense:change_stream' object.id %}" class="btn btn-primary">
+            {{ opciones.change }}
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>{% translate "No hay registros para mostrar." %}</p>
+    {% endif %}
+{% endblock %}
