@@ -34,8 +34,12 @@ class Stream(models.Model):
 	def __str__(self):
 		return self.descripcion
 
+	def save(self, *args, **kwargs):
+		self.uuid = self.uuid.replace('-', '')
+		super().save(*args, **kwargs)
+
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{self.uuid}'
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{uuid.UUID(hex=self.uuid)}'
 
 
 class Modelo(models.Model):
@@ -59,8 +63,12 @@ class Modelo(models.Model):
 	def __str__(self):
 		return self.descripcion
 
+	def save(self, *args, **kwargs):
+		self.uuid = self.uuid.replace('-', '')
+		super().save(*args, **kwargs)
+
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.uuid}'
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{uuid.UUID(hex=self.uuid)}'
 
 class Campo(models.Model):
 	""" Campo: informacion de los campos finales de cada modelo """
