@@ -73,11 +73,11 @@ Se configuran las opciones de internacionalización (idioma y otras opciones) [I
     USE_I18N = True
     USE_TZ = False
 
-Se configura la ruta general de archivso estatic
+Se configura la ruta general de archivos static, se puede utilizar cualquiera de las siguientes opciones
 
-    STATICFILES_DIRS = [
-        BASE_DIR / "static",
-    ]
+    STATIC_ROOT = BASE_DIR / "static"
+    #STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+    #STATICFILES_DIRS = [ BASE_DIR / "static", ]
 
 Se configura el servidor de correos de prueba para desarrollo
 
