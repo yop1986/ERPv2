@@ -1,4 +1,5 @@
 import configparser, os
+import requests
 
 from django.contrib.staticfiles.storage import staticfiles_storage
 
@@ -18,3 +19,4 @@ class Configuraciones():
 
 	def get_value(self, pSection, pVariable):
 		return self.config[f'{pSection}'][f'{pVariable}']
+
