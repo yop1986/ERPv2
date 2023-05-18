@@ -27,15 +27,17 @@
           <td><a href="{% url 'qliksense:view_stream' object.stream.id %}">{{ object.stream }}</a></td>
           <td>{% get_descripcion_estados object.vigente 1 %}</td>
           <td>
-            <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
-            {% if perms.qliksense.view_stream %}
-            <a href="{% url 'qliksense:view_stream' object.id %}" class="btn btn-primary">
-            {{ opciones.view }}
+            <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">
+              <img src="{% static 'images/qs_link.png' %}" alt="{{ opciones.ir }}" title="{{ opciones.ir }}" height="21px">
+            </a>
+            {% if perms.qliksense.view_modelo %}
+            <a href="{% url 'qliksense:view_modelo' object.id %}" class="btn btn-primary">
+              <img src="{% static 'images/qs_view.png' %}" alt="{{ opciones.view }}" title="{{ opciones.view }}" height="21px">
             </a>
             {% endif %}
-            {% if perms.qliksense.change_stream %}
-            <a href="{% url 'qliksense:change_stream' object.id %}" class="btn btn-primary">
-            {{ opciones.change }}
+            {% if perms.qliksense.change_modelo %}
+            <a href="{% url 'qliksense:change_modelo' object.id %}" class="btn btn-primary">
+              <img src="{% static 'images/qs_change.png' %}" alt="{{ opciones.change }}" title="{{ opciones.change }}" height="21px">
             </a>
             {% endif %}
           </td>

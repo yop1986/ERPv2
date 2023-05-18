@@ -32,10 +32,17 @@
         {{ opciones.etiqueta }}
     </strong></div>
     <div class="col-8">
-        <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
-        {% if perms.qliksense.change_stream %}
-        <a href="{% url 'qliksense:change_stream' object.id %}" class="btn btn-primary">
-            {{ opciones.change }}
+        <a href="{{ object.get_qs_url }}" class="btn btn-primary" target="blank">
+            <img src="{% static 'images/qs_link.png' %}" alt="{{ opciones.ir }}" title="{{ opciones.ir }}" height="21px">
+        </a>
+        {% if perms.qliksense.change_modelo %}
+        <a href="{% url 'qliksense:change_modelo' object.id %}" class="btn btn-primary">
+            <img src="{% static 'images/qs_change.png' %}" alt="{{ opciones.change }}" title="{{ opciones.change }}" height="21px">
+        </a>
+        {% endif %}
+        {% if perms.qliksense.change_modelo %}
+        <a href="{% url 'qliksense:reload_modelo' object.id 'metadata' %}" class="btn btn-primary">
+            <img src="{% static 'images/qs_refresh.png' %}" alt="{{ opciones.reload }}" title="{{ opciones.reload }}" height="21px">
         </a>
         {% endif %}
     </div>
@@ -66,7 +73,7 @@
             {{ opciones.view }}
             </a>
             {% endif %}
-            {% if perms.qliksense.change_stream %}
+            {% if perms.qliksense.change_modelo %}
             <a href="{% url 'qliksense:change_modelo' modelo.id %}" class="btn btn-primary">
             {{ opciones.change }}
             </a>

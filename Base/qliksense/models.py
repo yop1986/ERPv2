@@ -1,6 +1,5 @@
-import uuid, configparser, os
+import uuid
 
-from django.contrib.staticfiles.storage import staticfiles_storage
 from django.db import models
 from django.utils.translation import gettext as _
 
@@ -39,7 +38,10 @@ class Stream(models.Model):
 		super().save(*args, **kwargs)
 
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{uuid.UUID(hex=self.uuid)}'
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{self.get_mask_uuid()}'
+
+	def get_mask_uuid(self):
+		return uuid.UUID(hex=self.uuid)
 
 
 class Modelo(models.Model):
@@ -68,15 +70,25 @@ class Modelo(models.Model):
 		super().save(*args, **kwargs)
 
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{uuid.UUID(hex=self.uuid)}'
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.get_mask_uuid()}'
+
+	def get_qs_url_metadata(self):
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'api/v1/apps/{self.get_mask_uuid()}/data/metadata'
+
+	def get_mask_uuid(self):
+		return uuid.UUID(hex=self.uuid)
+
 
 class Campo(models.Model):
 	""" Campo: informacion de los campos finales de cada modelo """
 	CAMPO_TIPOS = [
-		('BOOL', 'Booleano'),
-		('CHAR', 'Cadena'),
-		('NUMB', 'Numerico'),
+		('DATE', 'Fecha'),
+		('TEXT', 'Texto'),
+		('INT', 'Entero'),
+		('DEC', 'Decimal'),
+		('-', 'Indefinido'),
 	]
+
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	descripcion	= models.CharField(_('Descripción'), max_length=90)
 	# get_tipo_display() para obtener el valor y no el código
@@ -92,3 +104,9 @@ class Campo(models.Model):
 
 	def __str__(self):
 		return f'{self.models}, {self.descripcion}'
+
+#+ "fields"[0]["tags"] contains "$timestamp" o "$date" >> DATE
+#+ "fields"[0]["tags"] contains "$text" >> TEXT
+#+ "fields"[0]["tags"] contains "$integer" >> INT
+#+ "fields"[0]["tags"] contains "$numeric" >> DEC
+#+ else >> - 
