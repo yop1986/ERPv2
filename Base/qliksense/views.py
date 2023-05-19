@@ -57,7 +57,7 @@ class StreamList(PersonalListView):
 	permission_required = 'qliksense.list_stream'
 	model = Stream
 	ordering = ('-vigente', 'descripcion')
-	paginate_by = 12
+	paginate_by = 20
 	extra_context ={
 		'title': _('Lista de streams'),
 		'link_clase': 'stream',
@@ -108,7 +108,7 @@ class StreamUpdate(PersonalUpdateView):
 		else:
 			return reverse_lazy('qliksense:list_stream')
 
-class StreamView(PersonalDetailView):
+class StreamDetail(PersonalDetailView):
 	'''
 		Información específica del stream 
 	'''
@@ -130,7 +130,7 @@ class StreamView(PersonalDetailView):
 	}
 
 	def get_context_data(self, *args, **kwargs):
-		context = super(StreamView, self).get_context_data(*args, **kwargs)
+		context = super(StreamDetail, self).get_context_data(*args, **kwargs)
 		context['modelos'] = Modelo.objects.filter(stream=self.object).order_by('-vigente', 'descripcion')
 		return context
 
@@ -146,7 +146,7 @@ class ModeloList(PersonalListView):
 	permission_required = 'qliksense.list_modelo'
 	model = Modelo
 	ordering = ('-vigente', 'stream', 'descripcion')
-	paginate_by = 12
+	paginate_by = 20
 	extra_context ={
 		'title': _('Lista general de modelos'),
 		'link_clase': 'modelo',
@@ -206,7 +206,7 @@ class ModeloCreate(PersonalCreateView):
 		context['form'] = ModeloCreateForm(initial)
 		return context
 
-class ModeloView(PersonalDetailView):
+class ModeloDetail(PersonalDetailView):
 	'''
 		Información específica del stream 
 	'''
@@ -229,7 +229,7 @@ class ModeloView(PersonalDetailView):
 	}
 
 	def get_context_data(self, *args, **kwargs):
-		context = super(ModeloView, self).get_context_data(*args, **kwargs)
+		context = super(ModeloDetail, self).get_context_data(*args, **kwargs)
 		if ('opt' in self.kwargs):
 			JsonQSRequests(self.object.get_qs_url_metadata(), f'{self.object.get_mask_uuid()}', 'json').get_json()
 		context['campos'] = Campo.objects.filter(modelo=self.object).order_by('descripcion')
@@ -241,28 +241,34 @@ class ModeloDelete(PersonalDeleteView):
 ###
 ### FUNCIONES ADICIONALES
 ###
-class JsonQSRequests():
+
+class QlikCargaMasiva(PersonalTemplateView):
+	template_name = 'qliksense/index.html'
+	permission_required	= 'qliksense.add_campo'
+	extra_context = {
+		'title': _('Qlik Sense (Carga Masiva)'),
+	}
+
+	def get_context_data(self):
+		JsonQSAppsInfo().genera_masivo()
+		context = super(QlikCargaMasiva, self).get_context_data()
+		return context
+
+
+class JsonQS():
 	'''
 		Consulta el API de Qlik Sense
 		Extrae el nombre de los modelos y sus respectivos ids
-		Extrae la metadata de los modelos (para evaluar los campos)
-
-		Parametros Iniciales
-		pUrl: 	Url de consulta de la api (para obtener la metadata)
-		pFile: 	Es el id de la app en qlik sense y será el nombre del archivo generado con la metadata
-		pExt: 	Extensión del archivo resultante
-		pPath: 	Path donde se colocará el archivo generado, si no hay deja 'static' por default
 	'''
-	def __init__(self, pUrl, pFile, pExt, pPath=None):
-		self.parameters = Configuraciones()
-		self.url = pUrl
-		self.file = pFile
-		self.ext = pExt
-		if pPath:
-			self.path = pPath + pFile
-		else:
-			self.path = '.' + staticfiles_storage.url(pFile)
-		
+	def __init__(self):
+		requests.packages.urllib3.disable_warnings()
+		parameters = Configuraciones()
+		# Credenciales, ingresadas únicamente al procesar la solicitud
+		self.user_auth = HttpNtlmAuth(
+			fr'{parameters.get_value("qliksense", "auth_user")}',
+			fr'{parameters.get_value("qliksense", "auth_pass")}'
+			)
+		self.proxy = parameters.get_value('qliksense', 'qlik_proxy')
 		#Encabezado para realizar la consulta a la API
 		self.xrf = 'iX83QmNlvu87yyAB'
 		self.headers = {
@@ -271,38 +277,115 @@ class JsonQSRequests():
 			"User-Agent":"Windows"
 			}
 
-	def get_json(self):
-		requests.packages.urllib3.disable_warnings()
-
-		# Credenciales, ingresadas únicamente al procesar la solicitud
-		user_auth = HttpNtlmAuth(
-			fr'{self.parameters.get_value("qliksense", "auth_user")}',
-			fr'{self.parameters.get_value("qliksense", "auth_pass")}'
-			)
+	
+class JsonQSAppsInfo(JsonQS):
+	'''
+		Consulta el API de Qlik Sense
+		Extrae el nombre de los modelos y sus respectivos ids
+	'''
+	def __init__(self):
+		super(JsonQSAppsInfo, self).__init__()
 
 		# Obtiene la informacion general de las apps (para obtener el nombre)
-		enc = requests.get('https://vmqlikviewger.bdr/qrs/app/full?xrfkey={}'.format(self.xrf),headers = self.headers,
-				verify=False, auth=user_auth).json()
+		self.apps = requests.get(f'{self.proxy}qrs/app/full?xrfkey={self.xrf}', headers = self.headers,
+				verify=False, auth=self.user_auth).json()
 		
+	def get_apps(self):
+		return self.apps
+
+	def dump_apps(self):
+		with open(f'.{staticfiles_storage.url("")}json_modelos/apps.json', 'w') as outfile:
+			json.dump(self.apps, outfile)
+
+	def get_app_info(self, pUuid):
 		# Busca el Id de la App
-		datos = [item for item in enc if item['id']==f'{self.file}']
+		return [item for item in self.apps if item['id']==f'{pUuid}']
+
+	def genera_masivo(self):
+		#Dump de los encabezados
+		self.dump_apps()
+
+		json = JsonQSApp()
+		streams = Stream.objects.all()
+		for app in self.apps:
+			try:
+				if app['stream']:
+					stream_id = streams.filter(uuid=app['stream']['id'].replace('-', ''))
+					if stream_id:
+						stream_id = stream_id[0].id
+					else:
+						Stream.objects.create(descripcion=app['stream']['name'], uuid=app['stream']['id'])
+						stream_id = Stream.objects.last().id
+						streams = Stream.objects.all() # vuelve a cargar todos para no hacer la consulta nuevamente
+				else:
+					stream_id = streams.filter(descripcion='Trabajo/Todos')
+					if stream_id:
+						stream_id = stream_id[0].id
+					else:
+						Stream.objects.create(descripcion='Trabajo/Todos', uuid='00000000-0000-0000-0000-000000000000')
+						stream_id = Stream.objects.last().id
+						streams = Stream.objects.all() # vuelve a cargar todos para no hacer la consulta nuevamente
+
+				modelo_id = Modelo.objects.filter(uuid=app['id'].replace('-', ''))
+				if modelo_id:
+					modelo_id = modelo_id[0].id
+				else:
+					modelo_nombre = f"{'' if app['stream'] else app['owner']['userId']+' - '}{app['name']}"
+					Modelo.objects.create(descripcion=modelo_nombre,uuid=app['id'],stream_id=stream_id)
+
+				json.genera_archivo(app['id'], app)
+			except Exception as e:
+				print(f"Exception: {e} - {app['stream'] if app['stream'] else 'Trabajo/Todos'}---{app['id']}: {repr(e)}")
+				
+
+class JsonQSApp(JsonQS):
+	'''
+		Consulta el API de Qlik Sense
+		Extrae la metadata de los modelos (atributos generales)
+	'''
+	def __init__(self):
+		super(JsonQSApp, self).__init__()
 		
-		# Información propia de la aplicación que se esta consultando
-		resp = requests.get(self.url,headers = self.headers,verify = False,auth = user_auth)
-
+	def request_json(self, uuid):
+		url = f'{self.proxy}api/v1/apps/{uuid}/data/metadata'
+		resp = requests.get(url,headers = self.headers, verify = False, auth = self.user_auth)
 		if resp.status_code != 200:
-			# Hubo algun problema, revisar
-			return {
-				'tipo': 'danger',
-				'mensaje': f'Error al intentar extraer informacion del API {resp.status_code}'
-				}
-		json_final = resp.json()
-		json_final['model'] = datos[0] if len(datos)==1 else ''
+			raise ApiError('GET /qrs/app/full {}'.format(resp.status_code))
+		return resp.json()
 
-		with open(f"{self.path}.{self.ext}", 'w') as outfile:
+	def genera_archivo(self, uuid, modelo, path=None):
+		json_final = self.request_json(uuid)
+		campos = []
+
+		json_final['model'] = modelo if modelo else ''
+
+		modelo_obj = Modelo.objects.get(uuid=uuid.replace('-', ''))
+		campos_modelo = Campo.objects.filter(modelo=modelo_obj)
+		for field in json_final['fields']:
+			if not field['is_system'] and not field['is_hidden']:
+				tabla = field['src_tables'][0] if field['src_tables'][0] else ''
+				if not campos_modelo.filter(nombre__iexact=f"{tabla} | {field['name']}"):
+					valor = Campo(nombre=f"{tabla} | {field['name']}", tipo=self.get_tipo_dato(field['tags']), modelo_id=modelo_obj.id)
+					campos.append(valor)
+
+		Campo.objects.bulk_create(campos)
+
+		if not path:
+			path = f'.{staticfiles_storage.url("")}json_modelos/{uuid}.json'
+
+		with open(f'{path}', 'w') as outfile:
 			json.dump(json_final, outfile)
 
-		return {
-			'tipo': 'success',
-			'mensaje': f'Se obtuvo la información'
-			}
+		return path
+
+	def get_tipo_dato(self, tags):
+		if '$timestamp' in tags or '$date' in tags:
+			return 'DATE'
+		elif '$text' in tags:
+			return 'TEXT'
+		elif '$integer' in tags:
+			return 'INT'
+		elif '$numeric' in tags:
+			return 'DEC'
+		else:
+			return '-'

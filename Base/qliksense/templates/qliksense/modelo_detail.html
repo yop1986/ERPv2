@@ -55,29 +55,20 @@
       <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col">{% get_verbose_field_name campos.0 "descripcion" %}</th>
-          <th scope="col">{% get_verbose_field_name campos.0 "vigente" %}</th>
+          <th scope="col">{% get_verbose_field_name campos.0 "nombre" %}</th>
+          <th scope="col">{% get_verbose_field_name campos.0 "tipo" %}</th>
           <th scope="col">{{ opciones.etiqueta }}</th>
         </tr>
       </thead> 
 
-      {% for modelo in campos %}
+      {% for campo in campos %}
         <tr>
           <th scope="row">{{ forloop.counter }}</td>
-          <td>{{ modelo.descripcion }}</td>
-          <td>{% get_descripcion_estados modelo.vigente 1 %}</td>
+          <td>{{ campo.nombre }}</td>
+          <td>{{ campo.get_tipo_display }}</td>
+          
           <td>
-            <a href="{{ modelo.get_qs_url }}" class="btn btn-primary" target="blank">{{ opciones.ir }}</a>
-            {% if perms.qliksense.view_stream %}
-            <a href="{% url 'qliksense:view_modelo' modelo.id %}" class="btn btn-primary">
-            {{ opciones.view }}
-            </a>
-            {% endif %}
-            {% if perms.qliksense.change_modelo %}
-            <a href="{% url 'qliksense:change_modelo' modelo.id %}" class="btn btn-primary">
-            {{ opciones.change }}
-            </a>
-            {% endif %}
+          
           </td>
         </tr>
       {% endfor %}

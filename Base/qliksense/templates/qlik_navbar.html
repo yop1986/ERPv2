@@ -8,5 +8,9 @@
     <li><a class="dropdown-item" href="{% url 'qliksense:list_stream' %}">{% translate "Listar" %} Streams</a></li>
     <li><a class="dropdown-item" href="{% url 'qliksense:list_modelo' %}">{% translate "Listar Modelo" %} </a></li>
     
+    {% if request.user.is_staff %}
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="{% url 'qliksense:carga_masiva' %}">Carga Masiva</a></li>
+    {% endif %}
   </ul>
 </li>

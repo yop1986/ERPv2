@@ -55,7 +55,6 @@ class Modelo(models.Model):
 
 	class Meta:
 		constraints = [
-			models.UniqueConstraint(fields=['descripcion'], name='mo_unq_descripcion'),
 			models.UniqueConstraint(fields=['uuid'], name='mo_unq_uuid'),
 		]
 		permissions = (
@@ -72,9 +71,6 @@ class Modelo(models.Model):
 	def get_qs_url(self):
 		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.get_mask_uuid()}'
 
-	def get_qs_url_metadata(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'api/v1/apps/{self.get_mask_uuid()}/data/metadata'
-
 	def get_mask_uuid(self):
 		return uuid.UUID(hex=self.uuid)
 
@@ -90,23 +86,12 @@ class Campo(models.Model):
 	]
 
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-	descripcion	= models.CharField(_('Descripción'), max_length=90)
+	nombre		= models.CharField(_('Nombre'), max_length=120)
 	# get_tipo_display() para obtener el valor y no el código
 	tipo 		= models.CharField(_('Tipo'), max_length=4, choices=CAMPO_TIPOS, blank=False, null=False)
 	descripcion = models.CharField(_('Descripción'), max_length=250)
 
 	modelo 		= models.ForeignKey(Modelo, on_delete=models.CASCADE)
 
-	class Meta:
-		constraints = [
-			models.UniqueConstraint(fields=['descripcion', 'modelo'], name='ca_unq_descripcion_modelo'),
-		]
-
 	def __str__(self):
-		return f'{self.models}, {self.descripcion}'
-
-#+ "fields"[0]["tags"] contains "$timestamp" o "$date" >> DATE
-#+ "fields"[0]["tags"] contains "$text" >> TEXT
-#+ "fields"[0]["tags"] contains "$integer" >> INT
-#+ "fields"[0]["tags"] contains "$numeric" >> DEC
-#+ else >> - 
+		return f'{self.modelo}, {self.nombre}'
