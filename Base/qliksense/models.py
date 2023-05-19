@@ -43,6 +43,9 @@ class Stream(models.Model):
 	def get_mask_uuid(self):
 		return uuid.UUID(hex=self.uuid)
 
+	def get_childs(self, order='descripcion'):
+		return Modelo.objects.filter(stream=self).order_by(order)
+
 
 class Modelo(models.Model):
 	"""Modelo: información general de los modelos"""
@@ -74,6 +77,9 @@ class Modelo(models.Model):
 	def get_mask_uuid(self):
 		return uuid.UUID(hex=self.uuid)
 
+	def get_childs(self, order='nombre'):
+		return Campo.objects.filter(modelo=self).order_by(order)
+
 
 class Campo(models.Model):
 	""" Campo: informacion de los campos finales de cada modelo """
@@ -87,6 +93,7 @@ class Campo(models.Model):
 
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	nombre		= models.CharField(_('Nombre'), max_length=120)
+	tabla 		= models.CharField(_('Tabla'), max_length=90, blank=True, default='')
 	# get_tipo_display() para obtener el valor y no el código
 	tipo 		= models.CharField(_('Tipo'), max_length=4, choices=CAMPO_TIPOS, blank=False, null=False)
 	descripcion = models.CharField(_('Descripción'), max_length=250)

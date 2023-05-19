@@ -41,7 +41,7 @@
         </a>
         {% endif %}
         {% if perms.qliksense.change_modelo %}
-        <a href="{% url 'qliksense:reload_modelo' object.id 'metadata' %}" class="btn btn-primary">
+        <a href="{% url 'qliksense:view_modelo' object.id 'metadata' %}" class="btn btn-primary">
             <img src="{% static 'images/qs_refresh.png' %}" alt="{{ opciones.reload }}" title="{{ opciones.reload }}" height="21px">
         </a>
         {% endif %}
@@ -55,8 +55,9 @@
       <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col">{% get_verbose_field_name campos.0 "nombre" %}</th>
-          <th scope="col">{% get_verbose_field_name campos.0 "tipo" %}</th>
+          <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'nombre' %}">{% get_verbose_field_name campos.0 "nombre" %}</a></th>
+          <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'tabla' %} ">{% get_verbose_field_name campos.0 "tabla" %}</a></th>
+          <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'tipo' %} ">{% get_verbose_field_name campos.0 "tipo" %}</a></th>
           <th scope="col">{{ opciones.etiqueta }}</th>
         </tr>
       </thead> 
@@ -65,6 +66,7 @@
         <tr>
           <th scope="row">{{ forloop.counter }}</td>
           <td>{{ campo.nombre }}</td>
+          <td>{{ campo.tabla }}</td>
           <td>{{ campo.get_tipo_display }}</td>
           
           <td>

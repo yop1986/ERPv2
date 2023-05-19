@@ -35,7 +35,7 @@ class QlikSense(PersonalTemplateView):
 		context = super(QlikSense, self).get_context_data()
 		context['objects'] = {
 			'streams':{
-				'nombre': _('Streams'),
+				'nombre': 'Streams',
 				'descripcion': _('Forma de agrupar los modelos de QlikSense.'),
 				'imagen': 'qs_stream.png',
 				'link_clase': 'stream',
@@ -131,7 +131,8 @@ class StreamDetail(PersonalDetailView):
 
 	def get_context_data(self, *args, **kwargs):
 		context = super(StreamDetail, self).get_context_data(*args, **kwargs)
-		context['modelos'] = Modelo.objects.filter(stream=self.object).order_by('-vigente', 'descripcion')
+		orden = self.kwargs['opt'] if 'opt' in self.kwargs else 'descripcion'
+		context['modelos'] = self.object.get_childs(orden)
 		return context
 
 
@@ -230,9 +231,12 @@ class ModeloDetail(PersonalDetailView):
 
 	def get_context_data(self, *args, **kwargs):
 		context = super(ModeloDetail, self).get_context_data(*args, **kwargs)
-		if ('opt' in self.kwargs):
+		if ('opt' in self.kwargs and self.kwargs['opt']=='metadata'):
 			JsonQSRequests(self.object.get_qs_url_metadata(), f'{self.object.get_mask_uuid()}', 'json').get_json()
-		context['campos'] = Campo.objects.filter(modelo=self.object).order_by('descripcion')
+		else:
+			orden = self.kwargs['opt'] if 'opt' in self.kwargs else 'nombre'
+		context['campos'] = self.object.get_childs(orden)
+		
 		return context
 
 class ModeloDelete(PersonalDeleteView):
