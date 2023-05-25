@@ -172,7 +172,6 @@ class UsuarioPerfil(PersonalTemplateView):
 
     def get_context_data(self):
         context = super(UsuarioPerfil, self).get_context_data()
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['object'] = Usuario.objects.get(pk=self.request.user.id)
         return context
 
@@ -199,7 +198,6 @@ class UsuarioActualizar(PersonalUpdateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(UsuarioActualizar, self).get_context_data(*args, **kwargs)
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['aditional_form'] = PerfilForm(instance=self.request.user.perfil)
         return context
 
@@ -234,11 +232,6 @@ class UsuarioNuevoFormView(PersonalFormView):
             form.save()
         return super(UsuarioNuevoFormView, self).form_valid(form)
 
-    def get_context_data(self):
-        context = super(UsuarioNuevoFormView, self).get_context_data()
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
-        return context
-
 
 class UsuarioListView(PersonalListView):
     '''
@@ -255,11 +248,6 @@ class UsuarioListView(PersonalListView):
             'editar': _('Editar'),
         },
     }
-
-    def get_context_data(self):
-        context = super(UsuarioListView, self).get_context_data()
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
-        return context
 
     def get_queryset(self):
         valor_busqueda = self.request.GET.get('valor')
@@ -298,7 +286,6 @@ class UsuarioUpdateView(PersonalUpdateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(UsuarioUpdateView, self).get_context_data(*args, **kwargs)
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['aditional_form'] = PerfilForm(instance=self.object.perfil)
         return context
 
@@ -330,11 +317,6 @@ class RegionalizacionCreateView(PersonalFormView):
             'submit': _('Guardar'),
         },
     }
-
-    def get_context_data(self):
-        context = super(RegionalizacionCreateView, self).get_context_data()
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
-        return context
 
     def form_valid(self, *args, **kwargs):
         nombre_pais = self.request.POST["pais"].upper()
@@ -410,7 +392,6 @@ class RegionalizacionListView(PersonalListView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(RegionalizacionListView, self).get_context_data(*args, **kwargs)
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         context['object_list'] = Regionalizacion.objects.filter(padre__isnull=True).order_by('nombre')
         return context
 
@@ -427,8 +408,3 @@ class RegionalizacionUpdateView(PersonalUpdateView):
             'submit': _('Actualizar')
         },
     }
-
-    def get_context_data(self):
-        context = super(RegionalizacionUpdateView, self).get_context_data()
-        context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
-        return context

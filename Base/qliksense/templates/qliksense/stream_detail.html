@@ -6,13 +6,6 @@
 {% block content_detail %}
 <div class="row">
     <div class="col-4"><strong>
-        {% get_verbose_field_name object "descripcion" %}
-    </strong></div>
-    <div class="col-8">
-        {{ object.descripcion }}
-    </div>
-
-    <div class="col-4"><strong>
         {% translate 'Estado' %}
     </strong></div>
     <div class="col-8">
@@ -36,6 +29,11 @@
         {% if perms.qliksense.add_modelo %}
         <a href="{% url 'qliksense:add_modelo' object.id %}" class="btn btn-primary">
             <img src="{% static 'images/qs_add.png' %}" alt="{{ opciones.add_modelo }}" title="{{ opciones.add_modelo }}" height="21px"></a>   
+        {% endif %}
+        {% if perms.qliksense.change_modelo %}
+        <a href="{% url 'qliksense:view_stream' object.id 'metadata' %}" class="btn btn-primary">
+            <img src="{% static 'images/qs_refresh.png' %}" alt="{{ opciones.reload }}" title="{{ opciones.reload }}" height="21px">
+        </a>
         {% endif %}
     </div>
 </div>

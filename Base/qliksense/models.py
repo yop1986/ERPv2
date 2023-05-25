@@ -20,6 +20,8 @@ class Stream(models.Model):
 	descripcion	= models.CharField(_('Descripción'), max_length=90)
 	uuid  		= models.CharField(_('UUID'), max_length=36)
 	vigente		= models.BooleanField(_('Estado'), default=True)
+	fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
+	fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
 
 	class Meta:
 		constraints = [
@@ -43,6 +45,9 @@ class Stream(models.Model):
 	def get_mask_uuid(self):
 		return uuid.UUID(hex=self.uuid)
 
+	def get_strmask_uuid(self):
+		return str(uuid.UUID(hex=self.uuid))
+	
 	def get_childs(self, order='descripcion'):
 		return Modelo.objects.filter(stream=self).order_by(order)
 
@@ -53,6 +58,8 @@ class Modelo(models.Model):
 	descripcion	= models.CharField(_('Descripción'), max_length=90)
 	uuid  		= models.CharField(_('UUID'), max_length=36)
 	vigente		= models.BooleanField(_('Estado'), default=True)
+	fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
+	fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
 
 	stream 		= models.ForeignKey(Stream, on_delete=models.RESTRICT)
 
@@ -76,6 +83,9 @@ class Modelo(models.Model):
 
 	def get_mask_uuid(self):
 		return uuid.UUID(hex=self.uuid)
+
+	def get_strmask_uuid(self):
+		return str(uuid.UUID(hex=self.uuid))
 
 	def get_childs(self, order='nombre'):
 		return Campo.objects.filter(modelo=self).order_by(order)
