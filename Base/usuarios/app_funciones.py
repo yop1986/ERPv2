@@ -58,16 +58,16 @@ class ObjetoDinamico():
 			RETURN
 			devuelve el objeto con los parametros, posterior a guardarlo en base de datos
 		'''
-#		try:
-		parametros = kwargs
-		for k, v in parametros.items():
-			setattr(self.obj, k, v)
+		try:
+			parametros = kwargs
+			for k, v in parametros.items():
+				setattr(self.obj, k, v)
 
-		if pAutoSave:
-			self.obj.save()
-			print(f'asgina parametros - {self.obj}')
-#		except Exception as e:
-#			raise e
+			if pAutoSave:
+				self.obj.save()
+				print(f'asgina parametros - {self.obj}')
+		except Exception as e:
+			raise e
 
 	def elimina_repetidos(self, *args, **kwargs):
 		'''
@@ -111,9 +111,6 @@ class ObjetoDinamico():
 
 		return modificado, pObjeto
 
-
-
-		
 
 
 class Configuraciones():

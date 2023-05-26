@@ -311,14 +311,12 @@ class JsonQS():
 
 
 class JsonQSApp(JsonQS):
-	#	'''
-	#		Consulta el API de Qlik Sense
-	#		Extrae la metadata de los modelos (atributos generales)
-	#	'''
-	#	def __init__(self):
-	#		super(JsonQSApp, self).__init__()
-
-	def obtiene_metada(self, pUuid, path=None):
+	'''
+		Consulta el API de Qlik Sense
+		Extrae la metadata de los modelos (atributos generales)
+	'''
+	
+	def obtiene_metada(self, pUuid, pMasivo=False, pPath=None):
 		'''
 		Genera el archivo Json de una app en particular
 
@@ -337,7 +335,8 @@ class JsonQSApp(JsonQS):
 		try:
 			modelo = Modelo.objects.get(uuid=pUuid.replace('-', ''))
 			stream = Stream.objects.get(uuid=stream_id)
-			modificado, modelo = ObjetoDinamico.valida_modificaciones(pObjeto=modelo, pAutoSave=True, descripcion=info_modelo['name'], stream_id=stream.id)
+			if not pMasivo:
+				modificado, modelo = ObjetoDinamico.valida_modificaciones(pObjeto=modelo, pAutoSave=True, descripcion=info_modelo['name'], stream_id=stream.id)
 		except Exception as e:
 			raise e
 			return False
@@ -357,10 +356,10 @@ class JsonQSApp(JsonQS):
 			Campo.objects.bulk_create(campos)
 			ObjetoDinamico('qliksense.models', 'Campo').elimina_repetidos('nombre', 'tabla', 'tipo', modelo_id=modelo.id)
 				#elimina_repetidos(self, *args, **kwargs):
-			if not path:
-				path = f'.{staticfiles_storage.url("")}json_modelos/{pUuid}.json'
+			if not pPath:
+				pPath = f'.{staticfiles_storage.url("")}json_modelos/{pUuid}.json'
 
-			with open(f'{path}', 'w') as outfile:
+			with open(f'{pPath}', 'w') as outfile:
 				json.dump(json_final, outfile)
 		return True
 		
@@ -406,6 +405,7 @@ class JsonQSApp(JsonQS):
 
 	def genera_masivo(self, pStreamId=None):
 		if pStreamId:
+			# Si se envía un pStreamId, ya esta creado
 			stream = Stream.objects.get(id=pStreamId)
 
 		str_creado = False
@@ -422,11 +422,11 @@ class JsonQSApp(JsonQS):
 				if app['stream']:
 					stream_uuid = app['stream']['id']
 					stream_values = {'uuid': stream_uuid, 'descripcion': app['stream']['name']}
-					modelo_nombre = f"{app['name']}"
 				else:
 					stream_uuid = '00000000000000000000000000000000'
 					stream_values = {'uuid': stream_uuid, 'descripcion': 'Trabajo/Todos'}
-					modelo_nombre = f"{'' if app['stream'] else app['owner']['userId']+' - '}{app['name']}"
+
+				modelo_nombre = f"{app['name']}"
 				
 				str_mod = False
 
@@ -436,11 +436,11 @@ class JsonQSApp(JsonQS):
 					ObjetoDinamico.valida_modificaciones(stream, pAutoSave=True, **stream_values)
 				
 				if not pStreamId and not str_creado:
-					str_mod, mod = ObjetoDinamico.valida_modificaciones(stream, **stream_values)
+					str_mod, stream = ObjetoDinamico.valida_modificaciones(stream, **stream_values)
 					streams_del = streams_del.exclude(id=stream.id)
 				
 				if str_mod:
-					streams_upd.append(mod)
+					streams_upd.append(stream)
 
 				modelo = modelos_del.filter(uuid=app['id'].replace('-',''))
 				modelos_del = modelos_del.exclude(uuid=app['id'].replace('-',''))
@@ -450,7 +450,7 @@ class JsonQSApp(JsonQS):
 					ObjetoDinamico('qliksense.models', 'Modelo').get_or_create([app['id'].replace('-','')], ["uuid"], descripcion=modelo_nombre,uuid=app['id'].replace('-',''), stream=stream)
 
 
-				self.obtiene_metada(app['id'])
+				self.obtiene_metada(app['id'], pMasivo=pStreamId is None)
 			except Exception as e:
 				print(f"Exception: {e} - {app['stream'] if app['stream'] else 'Trabajo/Todos'}---{app['id']}: {repr(e)}")
 
