@@ -12,10 +12,13 @@ Se crea un ambiente virtual para mantener independencia en las configuraciones
 
 Se configura un archivo con las dependencias del proyecto en [documentacion/dependencias.txt](/documentacion/dependencias.txt) o se instalan las últimas versiones de los siguientes paquetes con __pip install__
 
-- django 
-- crispy-bootstrap5
-- openpyxl
-- mysqlclient
++ crispy-bootstrap5
++ Django
++ mysqlclient
++ openpyxl
++ python-dateutil
++ requests
++ requests-ntlm
 
 *dependencias creadas por medio del comando __pip freeze > requirements.txt__*
 
@@ -27,11 +30,17 @@ Es necesario crear un nuevo proyecto
 
     (.venv) ERPv2> django-admin startproject Base Base/
 
-Para el ambiente de desarrollo se configura el archivo __Base/Base/settings.py__
+Para se configura el archivo __Base/Base/settings.py__
 
-Se utiliza para definir urls dinámicas (especificadas al final de esta configuración)
+El Debug de habilita para desarrollo y se define False cuando sea producción, ademas por motivos de seguridad se edita la cadena SECRET_KEY
+
+    SECRET_KEY = 'django-insecure-k5)a(*vm9e73b#4!0wf+^w1e_9$q)-_1+kq&b=w*1+=*!3y$uz'
+    DEBUG = True
+
+Se importan los paquetes necesarios, la palabra lazy indica que la ejecución se realizará hasta que sea accesado el objeto y no previo a su ejecución.
 
     from django.urls import reverse_lazy
+    from django.utils.translation import gettext_lazy as _
 
 Se instalan las aplicaciones utilizadas y desarrolladas en el ERP 
 
@@ -95,7 +104,17 @@ Existe un archivo de configuracion en el directorio Base\Static, en el cual es n
     # Comentarios
     variable = valor
 
-Se definen variables globales, utilizadas en toda la aplicacion
+Se definen variables globales, utilizadas en toda la aplicacion; en el parametro 'app' se debe colocar el parquete especifico importado en INSTALLED_APPS
+
+    # titulo o etiqueta con el nombre del sitio 
+    GENERAL_SITE_INFO = {
+        'nombre_sitio': 'ERPv2',
+    }
+
+    # define la etiqueta css utilizada por los mensajes
+    MESSAGE_TAGS = {
+        messages.ERROR: "danger",
+    }
 
     # esta información para cada una de las apps instaladas
     INFORMACION_APLICACIONES = {
