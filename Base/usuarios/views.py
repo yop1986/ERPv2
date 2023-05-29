@@ -84,8 +84,8 @@ class UsuarioLoginView(LoginView):
         },
     }
 
-    def get_context_data(self):
-        context = super(UsuarioLoginView, self).get_context_data()
+    def get_context_data(self, *args, **kwargs):
+        context = super(UsuarioLoginView, self).get_context_data(*args, **kwargs)
         context['general'] = {'nombre_sitio': gConfiguracion.get_value('sitio', 'nombre')}
         return context
 
