@@ -39,6 +39,7 @@ El Debug de habilita para desarrollo y se define False cuando sea producción, a
 
 Se importan los paquetes necesarios, la palabra lazy indica que la ejecución se realizará hasta que sea accesado el objeto y no previo a su ejecución.
 
+    from django.contrib import messages
     from django.urls import reverse_lazy
     from django.utils.translation import gettext_lazy as _
 
