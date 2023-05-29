@@ -41,8 +41,11 @@ class Stream(models.Model):
 	def get_qs_url(self):
 		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{self.uuid}'
 
-	def get_childs(self, order='descripcion'):
-		return Modelo.objects.filter(stream=self).order_by(order)
+	def get_childs(self, orden='descripcion', filtro={}):
+		modelos = Modelo.objects.filter(stream=self)
+		if filtro:
+			modelos = modelos.filter(**filtro)
+		return modelos.order_by(orden)
 
 
 class Modelo(models.Model):
@@ -73,8 +76,11 @@ class Modelo(models.Model):
 	def get_qs_url(self):
 		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.uuid}'
 
-	def get_childs(self, order='nombre'):
-		return Campo.objects.filter(modelo=self).order_by(order)
+	def get_childs(self, orden='nombre', filtro={}):
+		campos = Campo.objects.filter(modelo=self)
+		if filtro: 
+			campos = campos.filter(**filtro)
+		return campos.order_by(orden)
 
 
 class Campo(models.Model):

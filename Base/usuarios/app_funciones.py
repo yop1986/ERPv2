@@ -65,8 +65,8 @@ class ObjetoDinamico():
 
 			if pAutoSave:
 				self.obj.save()
-				print(f'asgina parametros - {self.obj}')
 		except Exception as e:
+			print('Error in method: usuarios.app_funciones.asigna_parametros()')
 			raise e
 
 	def elimina_repetidos(self, *args, **kwargs):
@@ -112,7 +112,6 @@ class ObjetoDinamico():
 		return modificado, pObjeto
 
 
-
 class Configuraciones():
 	config = configparser.ConfigParser()
 
@@ -150,3 +149,20 @@ class Configuraciones():
 
 
 	
+
+
+###
+### Búsqueda genérica
+###
+def BusquedaNombres(campos, valores):
+    '''
+        Permite generar una busqueda compleja de multiples valores en multiples campos
+        por medio de sentencias OR
+        campos: campo y tipo de consulta (ej. [nombre__icontains, apellido__icontains])
+        valores: valores a buscar en la consulta OR separado por espacio (ej. pablo godoy) 
+    '''
+    q = Q()
+    for campo in campos:
+        for valor in valores:
+            q |= Q(**{f'{campo}' : valor})
+    return q

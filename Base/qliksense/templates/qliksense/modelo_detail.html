@@ -48,7 +48,7 @@
       <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'nombre' %}">{% get_verbose_field_name campos.0 "nombre" %}</a></th>
+          <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id %}">{% get_verbose_field_name campos.0 "nombre" %}</a></th>
           <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'tabla' %} ">{% get_verbose_field_name campos.0 "tabla" %}</a></th>
           <th scope="col"><a href="{% url 'qliksense:view_modelo' object.id 'tipo' %} ">{% get_verbose_field_name campos.0 "tipo" %}</a></th>
           <th scope="col">{{ opciones.etiqueta }}</th>

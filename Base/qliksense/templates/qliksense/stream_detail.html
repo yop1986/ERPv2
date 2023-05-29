@@ -45,8 +45,8 @@
       <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col"><a href="{% url 'qliksense:view_stream' object.id 'descripcion' %}">{% get_verbose_field_name modelos.0 "descripcion" %}</a></th>
-          <th scope="col"><a href="{% url 'qliksense:view_stream' object.id 'vigente' %}">{% get_verbose_field_name modelos.0 "vigente" %}</a></th>
+          <th scope="col">{% get_verbose_field_name modelos.0 "descripcion" %}</th>
+          <th scope="col">{% get_verbose_field_name modelos.0 "vigente" %}</th>
           <th scope="col">{{ opciones.etiqueta }}</th>
         </tr>
       </thead> 

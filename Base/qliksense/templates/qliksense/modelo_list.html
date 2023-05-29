@@ -13,8 +13,8 @@
       <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col">{% get_verbose_field_name object_list.0 "descripcion" %}</th>
-          <th scope="col">{% get_verbose_field_name object_list.0 "stream" %}</th>
+          <th scope="col"><a href="{% url 'qliksense:list_modelo' %}">{% get_verbose_field_name object_list.0 "descripcion" %}</a></th>
+          <th scope="col"><a href="{% url 'qliksense:list_modelo' 'stream' %}">{% get_verbose_field_name object_list.0 "stream" %}</a></th>
           <th scope="col">{% get_verbose_field_name object_list.0 "vigente" %}</th>
           <th scope="col">{{ opciones.etiqueta }}</th>
         </tr>

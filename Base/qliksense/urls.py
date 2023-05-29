@@ -16,6 +16,7 @@ urlpatterns = [
 	path('streams/delete/<uuid:pk>/', views.StreamDelete.as_view(), name='delete_stream'),
 
 	path('modelos/', views.ModeloList.as_view(), name='list_modelo'),
+	path('modelos/<str:opt>/', views.ModeloList.as_view(), name='list_modelo'),
 	path('modelos/create/', views.ModeloCreate.as_view(), name='add_modelo'),
 	path('modelos/create/<uuid:stream>/', views.ModeloCreate.as_view(), name='add_modelo'),
 	path('modelos/update/<uuid:pk>/', views.ModeloUpdate.as_view(), name='change_modelo'),
