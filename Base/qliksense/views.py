@@ -2,6 +2,7 @@ import requests, json
 from requests_ntlm import HttpNtlmAuth
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.shortcuts import render
 from django.urls import reverse_lazy
@@ -133,7 +134,10 @@ class StreamDetail(PersonalDetailView):
 		context = super(StreamDetail, self).get_context_data(*args, **kwargs)
 		orden = 'descripcion'
 		if ('opt' in self.kwargs and self.kwargs['opt']=='metadata'):
-			JsonQSApp().genera_masivo(self.object.id)
+			try:
+				JsonQSApp().genera_masivo(self.object.id)
+			except Exception as e:
+				messages.add_message(self.request, messages.ERROR, e)
 			context['object'] = Stream.objects.get(id=self.object.id)
 		else:
 			orden = self.kwargs['opt'] if 'opt' in self.kwargs else 'descripcion'
@@ -206,10 +210,10 @@ class ModeloCreate(PersonalCreateView):
 
 	def get_context_data(self, *args, **kwargs):
 		context = super(ModeloCreate, self).get_context_data(*args, **kwargs)
-		initial = None
-		if ('stream' in self.kwargs and self.kwargs['stream']):
-			initial = {'stream':self.kwargs['stream']}
-		context['form'] = ModeloCreateForm(initial)
+		if (self.request.method == 'GET' and 'stream' in self.kwargs):
+			context['form'] = ModeloCreateForm({'stream':self.kwargs['stream']})
+		elif self.request.POST:
+			context['form'] = ModeloCreateForm(self.request.POST)
 		return context
 
 class ModeloDetail(PersonalDetailView):
@@ -238,7 +242,10 @@ class ModeloDetail(PersonalDetailView):
 		context = super(ModeloDetail, self).get_context_data(*args, **kwargs)
 		orden = 'nombre'
 		if ('opt' in self.kwargs and self.kwargs['opt']=='metadata'):
-			JsonQSApp().obtiene_metada(pUuid=self.object.get_strmask_uuid())
+			try:
+				JsonQSApp().obtiene_metada(self.object.uuid)
+			except Exception as e:
+				messages.add_message(self.request, messages.ERROR, e)
 			context['object'] = Modelo.objects.get(id=self.object.id)
 		else:
 			orden = self.kwargs['opt'] if 'opt' in self.kwargs else 'nombre'
@@ -262,7 +269,10 @@ class QlikCargaMasiva(PersonalTemplateView):
 
 	def get_context_data(self):
 		context = super(QlikCargaMasiva, self).get_context_data()
-		JsonQSApp().genera_masivo()
+		try:
+			JsonQSApp().genera_masivo()
+		except Exception as e:
+			messages.add_message(self.request, messages.ERROR, e)
 		return context
 
 
@@ -289,16 +299,20 @@ class JsonQS():
 			}
 
 		# Obtiene la informacion general de las apps (para obtener el nombre)
-		self.apps = requests.get(f'{self.proxy}qrs/app/full?xrfkey={self.xrf}', headers = self.headers,
+		try:
+			self.apps = requests.get(f'{self.proxy}qrs/app/full?xrfkey={self.xrf}', headers = self.headers,
 				verify=False, auth=self.user_auth).json()
-
+		except Exception as e:
+			self.apps = []
+			raise SystemError(f'Error al obtener las aplicaciones: "{e}"')
+		
 		self.dump_jsonapps()
 
 	def get_jsonapps(self):
 		return self.apps
 
-	def dump_jsonapps(self):
-		with open(f'.{staticfiles_storage.url("")}json_modelos/apps.json', 'w') as outfile:
+	def dump_jsonapps(self, filename='apps'):
+		with open(f'.{staticfiles_storage.url("")}json_modelos/{filename}.json', 'w') as outfile:
 			json.dump(self.apps, outfile)
 
 	def get_app_info(self, pUuid):
@@ -316,51 +330,50 @@ class JsonQSApp(JsonQS):
 		Extrae la metadata de los modelos (atributos generales)
 	'''
 	
-	def obtiene_metada(self, pUuid, pMasivo=False, pPath=None):
+	def obtiene_metada(self, uuid):
 		'''
 		Genera el archivo Json de una app en particular
 
 		PARAMETROS
-		pUuid: 		Identificador de la aplicación de la cual se generará la información
+		uuid: 		Identificador de la aplicación de la cual se generará la información
 
 		RETURN
 		Boolean		Verdadero si se completa el proceso/Falso si no es correcto el uuid del modelo
 		'''
-		json_final = self.request_json(pUuid)
-		info_modelo = self.get_app_info(pUuid)
-		stream_id = info_modelo['stream']['id'].replace('-', '') if info_modelo['stream'] else '00000000000000000000000000000000'
+		info_modelo = self.get_app_info(uuid)
+		json_final = self.request_json(uuid)
 		json_final['model'] = info_modelo if info_modelo else ''
+		stream_uuid = info_modelo['stream']['id'] if info_modelo['stream'] else '00000000-0000-0000-0000-000000000000'
 
-		campos = []
+		crea_campos = []
+
 		try:
-			modelo = Modelo.objects.get(uuid=pUuid.replace('-', ''))
-			stream = Stream.objects.get(uuid=stream_id)
-			if not pMasivo:
-				modificado, modelo = ObjetoDinamico.valida_modificaciones(pObjeto=modelo, pAutoSave=True, descripcion=info_modelo['name'], stream_id=stream.id)
+			stream = Stream.objects.get(uuid=stream_uuid)
+			mod_creado, modelo = ObjetoDinamico('qliksense.models', 'Modelo').get_or_create(
+				[uuid], ['uuid'], descripcion=info_modelo['name'], uuid=info_modelo['id'], 
+				stream=stream)
+
+			if not mod_creado:
+				ObjetoDinamico.valida_modificaciones(modelo, True, descripcion=info_modelo['name'], 
+					stream_id=stream.id)
 		except Exception as e:
-			raise e
-			return False
+			raise SystemError(f'Error al obtener la metadata de {uuid}: "{e}"')
 
-		if modelo:
-			campos_modelo = Campo.objects.filter(modelo=modelo)
-			for field in json_final['fields']:
-				if not field['is_system'] and not field['is_hidden']:
-					tabla = field['src_tables'][0] if field['src_tables'][0] else ''
-					if campos_modelo.filter(nombre__iexact=f"{field['name']}", tabla__iexact=tabla):
-						campos_modelo = campos_modelo.exclude(nombre__iexact=f"{field['name']}", tabla__iexact=tabla, tipo=self.get_tipo_dato(field['tags']))
-					else:
-						campo = Campo(nombre=f"{field['name']}", tabla=tabla, tipo=self.get_tipo_dato(field['tags']), modelo=modelo)
-						campos.append(campo)
+		del_campos = Campo.objects.filter(modelo=modelo)
+		for field in json_final['fields']:
+			if not field['is_system'] and not field['is_hidden']:
+				tabla = field['src_tables'][0] if len(field['src_tables'])==1 else '<Llave>'
+				if del_campos.filter(nombre__iexact=f"{field['name']}", tabla__iexact=tabla):
+					del_campos = del_campos.exclude(nombre__iexact=f"{field['name']}", tabla__iexact=tabla, tipo=self.get_tipo_dato(field['tags']))
+				else:
+					campo = Campo(nombre=f"{field['name']}", tabla=tabla, tipo=self.get_tipo_dato(field['tags']), modelo=modelo)
+					crea_campos.append(campo)
 
-			campos_modelo.delete()
-			Campo.objects.bulk_create(campos)
+			del_campos.delete()
+			Campo.objects.bulk_create(crea_campos)
 			ObjetoDinamico('qliksense.models', 'Campo').elimina_repetidos('nombre', 'tabla', 'tipo', modelo_id=modelo.id)
-				#elimina_repetidos(self, *args, **kwargs):
-			if not pPath:
-				pPath = f'.{staticfiles_storage.url("")}json_modelos/{pUuid}.json'
-
-			with open(f'{pPath}', 'w') as outfile:
-				json.dump(json_final, outfile)
+			
+		self.dump_jsonapps(uuid)
 		return True
 		
 	def request_json(self, uuid):
@@ -380,7 +393,7 @@ class JsonQSApp(JsonQS):
 				raise ApiError('GET /qrs/app/full {}'.format(resp.status_code))
 			return resp.json()
 		except Exception as e:
-			print(f'Error al obtener informacion de la aplicacion: {e}')
+			raise SystemError(f'Error al obtener la metadata de {uuid}: "{e}"')
 
 	def get_tipo_dato(self, tags):
 		'''
@@ -415,23 +428,20 @@ class JsonQSApp(JsonQS):
 
 		for app in self.apps:
 			jsonapp_stream_uuid = app['stream']['id'] if app['stream'] else '00000000-0000-0000-0000-000000000000'
-			if pStreamId and jsonapp_stream_uuid != stream.get_strmask_uuid():
+			if pStreamId and  stream.validate_str_uuid(jsonapp_stream_uuid):
 				continue; # No considera otros stream si se envía un UUID de Stream
 
 			try:
-				if app['stream']:
-					stream_uuid = app['stream']['id']
-					stream_values = {'uuid': stream_uuid, 'descripcion': app['stream']['name']}
-				else:
-					stream_uuid = '00000000000000000000000000000000'
-					stream_values = {'uuid': stream_uuid, 'descripcion': 'Trabajo/Todos'}
-
-				modelo_nombre = f"{app['name']}"
+				stream_values = {
+					'uuid': jsonapp_stream_uuid, 
+					'descripcion': app['stream']['name'] if app['stream'] else 'Trabajo/Todos'
+				}				
 				
 				str_mod = False
 
 				if not pStreamId:
-					str_creado, stream = ObjetoDinamico('qliksense.models', 'Stream').get_or_create([stream_uuid.replace('-','')], ["uuid"], **stream_values)
+					str_creado, stream = ObjetoDinamico('qliksense.models', 'Stream')\
+						.get_or_create([jsonapp_stream_uuid], ['uuid'], **stream_values)
 				else:
 					ObjetoDinamico.valida_modificaciones(stream, pAutoSave=True, **stream_values)
 				
@@ -442,19 +452,13 @@ class JsonQSApp(JsonQS):
 				if str_mod:
 					streams_upd.append(stream)
 
-				modelo = modelos_del.filter(uuid=app['id'].replace('-',''))
-				modelos_del = modelos_del.exclude(uuid=app['id'].replace('-',''))
+				modelos_del = modelos_del.exclude(uuid=app['id'])
 
-				if not modelo:
-					print(f"CREACION DE MODELO {modelo_nombre}")
-					ObjetoDinamico('qliksense.models', 'Modelo').get_or_create([app['id'].replace('-','')], ["uuid"], descripcion=modelo_nombre,uuid=app['id'].replace('-',''), stream=stream)
-
-
-				self.obtiene_metada(app['id'], pMasivo=pStreamId is None)
+				self.obtiene_metada(app['id'])
 			except Exception as e:
-				print(f"Exception: {e} - {app['stream'] if app['stream'] else 'Trabajo/Todos'}---{app['id']}: {repr(e)}")
+				raise Exception(f'Exception: {stream}/{app["name"]} {e}')
 
 		if len(streams_upd)>0:
 			Stream.objects.bulk_update(streams_upd, ['descripcion', 'uuid'])
-		modelos_del.delete()
 		streams_del.delete()
+		modelos_del.delete()

@@ -18,7 +18,7 @@ class Stream(models.Model):
 	"""Stream: forma de agrupar modelos dentro de Qlik Sense"""
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	descripcion	= models.CharField(_('Descripción'), max_length=90)
-	uuid  		= models.CharField(_('UUID'), max_length=36)
+	uuid  		= models.UUIDField(_('UUID'), max_length=36)
 	vigente		= models.BooleanField(_('Estado'), default=True)
 	fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
 	fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
@@ -35,19 +35,12 @@ class Stream(models.Model):
 	def __str__(self):
 		return self.descripcion
 
-	def save(self, *args, **kwargs):
-		self.uuid = self.uuid.replace('-', '')
-		super().save(*args, **kwargs)
+	def validate_str_uuid(self, uuid):
+		return str(self.uuid)==uuid
 
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{self.get_mask_uuid()}'
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'hub/stream/{self.uuid}'
 
-	def get_mask_uuid(self):
-		return uuid.UUID(hex=self.uuid)
-
-	def get_strmask_uuid(self):
-		return str(uuid.UUID(hex=self.uuid))
-	
 	def get_childs(self, order='descripcion'):
 		return Modelo.objects.filter(stream=self).order_by(order)
 
@@ -56,7 +49,7 @@ class Modelo(models.Model):
 	"""Modelo: información general de los modelos"""
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	descripcion	= models.CharField(_('Descripción'), max_length=90)
-	uuid  		= models.CharField(_('UUID'), max_length=36)
+	uuid  		= models.UUIDField(_('UUID'), max_length=36)
 	vigente		= models.BooleanField(_('Estado'), default=True)
 	fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
 	fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
@@ -74,18 +67,11 @@ class Modelo(models.Model):
 	def __str__(self):
 		return self.descripcion
 
-	def save(self, *args, **kwargs):
-		self.uuid = self.uuid.replace('-', '')
-		super().save(*args, **kwargs)
-
+	def validate_str_uuid(self, uuid):
+		return str(self.uuid)==uuid
+		
 	def get_qs_url(self):
-		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.get_mask_uuid()}'
-
-	def get_mask_uuid(self):
-		return uuid.UUID(hex=self.uuid)
-
-	def get_strmask_uuid(self):
-		return str(uuid.UUID(hex=self.uuid))
+		return gConfiguracion.get_value('qliksense', 'qlik_proxy') + f'sense/app/{self.uuid}'
 
 	def get_childs(self, order='nombre'):
 		return Campo.objects.filter(modelo=self).order_by(order)
