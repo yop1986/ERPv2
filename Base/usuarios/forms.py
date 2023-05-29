@@ -31,6 +31,7 @@ class CustomUserCreationForm(UserCreationForm):
             raise ValidationError(_('El correo ya existe'))  
         return email  
 
+
 class CustomUserUpdateForm(forms.ModelForm):
     '''
         Actualización de usuarios terceros
