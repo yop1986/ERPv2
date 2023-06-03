@@ -183,7 +183,7 @@ class ModeloList(PersonalListView):
 		print(orden)
 		valor_busqueda = self.request.GET.get('valor')
 		if valor_busqueda:
-			if 'stream:' in valor_busqueda:
+			if 'STREAM:' in valor_busqueda.upper():
 				qs = qs.filter(stream__descripcion__icontains=valor_busqueda[7:].replace(' ', ''))
 			else:
 				qs = qs.filter(descripcion__icontains=valor_busqueda)
@@ -274,9 +274,9 @@ class ModeloDetail(PersonalDetailView):
 
 		valor_busqueda = self.request.GET.get('valor')
 		if valor_busqueda:
-			if 'tabla:' in valor_busqueda:
+			if 'TABLA:' in valor_busqueda.upper():
 				context['campos'] = self.object.get_childs(orden=orden, filtro={'tabla__icontains': valor_busqueda[6:].replace(' ', '')})
-			elif 'tipo:' in valor_busqueda:
+			elif 'TIPO:' in valor_busqueda:
 				context['campos'] = self.object.get_childs(orden=orden, filtro={'tipo': valor_busqueda[6:].replace(' ', '')})
 			else:
 				context['campos'] = self.object.get_childs(orden=orden, filtro={'nombre__icontains': valor_busqueda})
