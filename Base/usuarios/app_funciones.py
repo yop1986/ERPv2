@@ -1,6 +1,10 @@
-import configparser, importlib, os
+from openpyxl import load_workbook
+import configparser, datetime, importlib, os
 
+from django.core.exceptions import ValidationError
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.db.models import Q
+from django.utils.translation import gettext as _
 
 # Instanciación dinamica de clases
 
@@ -115,22 +119,22 @@ class ObjetoDinamico():
 class Configuraciones():
 	config = configparser.ConfigParser()
 
-	def __init__(self, pPath=None, pStatic=True, pFile='configuraciones.cfg'):
+	def __init__(self, path=None, static=True, file='configuraciones.cfg'):
 		'''
 			Lee los archivos de configuración
 
 			PARAMETROS
-			pPath (string): 	ruta base de la aplicacion donde se encuentra el archivo
-			pStatic (bool): 	determina si se utilia la ruta defaul static de django
-			pFile (string): 	nombre del archivo de configuración (con su extension)
+			path (string): 	ruta base de la aplicacion donde se encuentra el archivo
+			static (bool): 	determina si se utilia la ruta defaul static de django
+			file (string): 	nombre del archivo de configuración (con su extension)
 		'''
-		if pPath is None:
+		if path is None:
 			url = './' #ruta relativa; os.getcwd() #ruta completa;
 
-		if pStatic: 
-			url += fr'{staticfiles_storage.url(pFile)}'
+		if static: 
+			url += fr'{staticfiles_storage.url(file)}'
 		else:
-			url += fr'{pFile}'
+			url += fr'{file}'
 
 		self.config.readfp(open(fr'{url}'))
 
@@ -148,13 +152,97 @@ class Configuraciones():
 		return self.config[f'{pSection}'][f'{pVariable}']
 
 
-	
+class Archivo():
+	'''
+		Carga los archivos y genera un dict con la información para consumirlos desde
+		otras clases validando el tipo de archvio y la parametrización de 
 
+		  - Usuarios.models ParametriaArchivoEncabezado, ParametriaArchivoDetalle -  
+	'''
+	def __init__(self, file, content_type, parametria_detalle):
+		self.campos_extra_en_archivo = None
+		self.error_en_data = []
+		self.parametrizacion = parametria_detalle
+
+		if not file.content_type == content_type:
+			raise ValidationError(_('Archivo no valido'))
+
+		if file.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+			### para archivos excel
+			self.sheet = load_workbook(file).active
+			self.campo_columna = self.lee_encabezados_xlsx()
+			self.valida_ordena_campos_xlsx()
+			self.data = self.leer_archivo_xlsx()
+			
+	def lee_encabezados_xlsx(self):
+		errores = []
+		campos = {}
+		for item in self.sheet[1]:
+			param = self.parametrizacion.get(display=item.value)
+			if not item.value in campos:
+				campos[item.value] = {
+					'posicion': item.col_idx-1,
+					'tipo': param.tipo,
+					'validacion': param.validacion if param.validacion else None,
+				}
+			else:
+				errores.append(ValidationError(_('Campo repetido en el archivo %(campo)s (columna: %(columna)s)'), params={'campo': item.value, 'columna': item.col_idx}))
+		if errores:
+			raise ValidationError(errores)
+		return campos
+
+	def valida_ordena_campos_xlsx(self):
+		campos_archivo = self.campo_columna.copy()
+		parametros = self.parametrizacion
+		for campo in self.campo_columna:
+			if parametros.filter(display=campo):
+				parametros = parametros.exclude(display=campo)
+				del campos_archivo[campo]
+
+		self.campos_extra_en_archivo = f'Campos extra en el archivo: {", ".join(campos_archivo)}' if campos_archivo else None
+		
+		if parametros:
+			raise ValidationError(_('Hace falta en el archivo los campos: %(campos)s'), params={'campos':' '.join(parametros.values_list('display', flat=True))})
+
+	def leer_archivo_xlsx(self):
+		data = {}
+		for index, linea in enumerate(self.sheet.iter_rows(min_row=2)):
+			detalle = {}
+			for k, v in self.campo_columna.items():
+				valido, detalle[k] = self.valida_tipo_dato(linea[v['posicion']].value, v['tipo'], validacion=v['validacion'])
+
+			if not valido:
+				self.error_en_data.append(f'Error en la linea: {index+2} - Detalle: {detalle}')
+				continue
+			data[index] = detalle
+		return data
+
+	def valida_tipo_dato(self, valor, tipo, **kwargs):
+		try:
+			if tipo == 'DATE':
+				formato = kwargs['validacion'] if kwargs['validacion'] else '%d/%m/%Y'
+				return 1, datetime.datetime.strptime(valor, formato).strftime(formato)
+			elif tipo == 'INT':
+				return 1, int(valor)
+			elif tipo == 'DEC':
+				return 1, float(valor)
+			elif tipo == 'BOOL':
+				return 1, valor != 0
+			elif tipo == 'TEXT':
+				validacion = kwargs['validacion'].upper().split(';')
+				if 'BLANK=FALSE' in validacion and len(valor)==0:
+					return 0, '<>'
+				return 1, str(valor)
+			else:
+				return 0, f'<{valor}>'
+		except Exception as e:
+			print(e)
+			return 0, f'<{valor}>'
 
 ###
 ### Búsqueda genérica
 ###
-def BusquedaNombres(campos, valores):
+def busqueda_nombres(campos, valores):
     '''
         Permite generar una busqueda compleja de multiples valores en multiples campos
         por medio de sentencias OR
@@ -166,3 +254,9 @@ def BusquedaNombres(campos, valores):
         for valor in valores:
             q |= Q(**{f'{campo}' : valor})
     return q
+
+###
+### Validación por extesniones de archivo
+###
+
+		

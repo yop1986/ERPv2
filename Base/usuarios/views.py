@@ -1,21 +1,19 @@
 import importlib
-from openpyxl import load_workbook
 
 from django.conf import settings
-from django.contrib.auth.decorators import permission_required
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import (LoginView, LogoutView, PasswordResetConfirmView, 
     PasswordResetView, PasswordResetDoneView, PasswordResetCompleteView, PasswordChangeView)
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.urls import reverse_lazy
 
-from .app_funciones import Configuraciones
-from .models import Usuario, Regionalizacion
-from .forms import CustomUserCreationForm, CustomUserUpdateForm, PerfilForm, RegionalizacionUploadForm
+from .app_funciones import Archivo, Configuraciones, ObjetoDinamico, busqueda_nombres
+from .models import Usuario, Regionalizacion, ParametriaArchivoEncabezado as ArchivoEnc, ParametriaArchivoDetalle as ArchivoDet
+from .forms import CustomUserCreationForm, CustomUserUpdateForm, PerfilForm, RegionalizacionForm, CargaArchivos
 from .personal_views import (PersonalTemplateView, PersonalListView, PersonalFormView, 
     PersonalUpdateView)
 
@@ -28,20 +26,6 @@ gConfiguracion = Configuraciones()
 #
 # FUNCIONES GENERICAS
 #
-
-def BusquedaNombres(campos, valores):
-    '''
-        Permite generar una busqueda compleja de multiples valores en multiples campos
-        por medio de sentencias OR
-        campos: campo y tipo de consulta (ej. [nombre__icontains, apellido__icontains])
-        valores: valores a buscar en la consulta OR separado por espacio (ej. pablo godoy) 
-    '''
-    q = Q()
-    for campo in campos:
-        for valor in valores:
-            q |= Q(**{f'{campo}' : valor})
-    return q
-
 def app_installed(apps):
     '''
         Valida si la aplicacion esta instalada
@@ -256,7 +240,7 @@ class UsuarioListView(PersonalListView):
                 return Usuario.objects.filter(email__icontains=valor_busqueda[5:]).order_by('email')
             elif 'name:' in valor_busqueda:
                 return Usuario.objects.filter(
-                    BusquedaNombres(
+                    busqueda_nombres(
                         campos=['first_name__icontains', 'last_name__icontains'], 
                         valores=valor_busqueda[5:].split(' ')),
                     ).order_by('first_name', 'last_name')
@@ -306,74 +290,82 @@ class RegionalizacionCreateView(PersonalFormView):
     '''
         Carga la informacion de departamentos/municipios para un país
     '''
-    template_name = 'usuarios/regionalizacion_uploadform.html'
+    template_name = 'usuarios/uploadform.html'
     permission_required = 'usuarios.add_regionalizacion'
-    form_class = RegionalizacionUploadForm
+    form_class = RegionalizacionForm
     success_url = reverse_lazy('usuarios:listar_regionalizacion')
     success_message = _('Regionalización cargada correctamente')
     extra_context ={
-        'title': _('Cargar Regionalización'),
+        'title': _('Cargar'),
+        'label_campos': _('Campos parametrizados'),
         'opciones': {
             'submit': _('Guardar'),
         },
     }
 
-    def form_valid(self, *args, **kwargs):
-        nombre_pais = self.request.POST["pais"].upper()
-        pais = Regionalizacion.objects.filter(nombre=nombre_pais, padre__isnull=True)
+    def get_context_data(self, *args, **kwargs):
+        context = super(RegionalizacionCreateView, self).get_context_data(*args, **kwargs)
+        try:
+            arch_enc = ArchivoEnc.objects.get(archivo__iexact='Carga_Regionalizacion', tipo='C')
+            context['campos'] = ArchivoDet.objects.filter(archivo=arch_enc)
+            context['upload_form'] = CargaArchivos()
+        except Exception as e:
+            messages.add_message(self.request, messages.ERROR, _(f'No existe la parametrización "Carga_Regionalizacion" ({e})'))
+
+        return context
+
+    def form_valid(self, form, *args, **kwargs):
+        nombre_pais = self.request.POST["pais"]
+        try:
+            pais = Regionalizacion.objects.get(nombre__iexact=nombre_pais, padre__isnull=True)
+        except Exception as e:
+            pais = Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
+            
+        jerarquia_completa = pais.get_jeraquia()
+        jerarquia_completa.update(vigente=False)
+
+        arch_enc = ArchivoEnc.objects.get(archivo__iexact='Carga_Regionalizacion', tipo='C')
+        arch_det = ArchivoDet.objects.filter(archivo=arch_enc)
         
-        if not pais:
-            Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
-            pais = Regionalizacion.objects.latest('id')
-        else:
-            pais = pais.latest('id')
+        try:
+            archivo = Archivo(self.request.FILES["archivo"], arch_enc.content_type, arch_det)
+            self.procesa_data(pais, jerarquia_completa, archivo.data)
+            print(archivo.data)
+            messages.add_message(self.request, messages.WARNING, archivo.campos_extra_en_archivo)
+            messages.add_message(self.request, messages.WARNING, archivo.error_en_data)
+        except Exception as ex:
+            for e in ex:
+                messages.add_message(self.request, messages.ERROR, e)
+            return self.form_invalid(form)
 
-        departamentos_list = list()
-        municipios_list = list()
+        return self.form_invalid(form)
+
+    def procesa_data(self, pais, jerarquia_completa, data):
+        obj_create = []
+        obj_update = Regionalizacion.objects.none()
+
+        for item in data:
+            qrs_depto = jerarquia_completa.filter(nombre=data[item]['Departamento'], padre=pais)
+            if qrs_depto:
+                obj_update |= qrs_depto
+            else:
+                obj_create.append(Regionalizacion(nombre=data[item]['Departamento'], padre=pais, usuario=self.request.user))
+
+        obj_update.update(vigente=True, usuario=self.request.user)
+        Regionalizacion.objects.bulk_create(obj_create)
+
+        obj_create = []
+        obj_update = Regionalizacion.objects.none()
+        obj_deptos = Regionalizacion.objects.filter(padre=pais, vigente=True)
         
-        departamentos, municipios = self._cargar_informacion()
-        
-        qryset_deptos = Regionalizacion.objects.filter(padre=pais)
-        
-        for departamento in departamentos:
-            nombre = departamento[:60].upper()
-            if not qryset_deptos.filter(nombre=nombre).exists():
-                # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
-                departamentos_list.append(Regionalizacion(nombre=nombre, usuario=self.request.user, padre=pais))
-
-        Regionalizacion.objects.bulk_create(departamentos_list)   
-        qryset_municipios = Regionalizacion.objects.prefetch_related('self').filter(padre__padre=pais)
-        
-        for info_municipio in municipios:
-            valor = info_municipio.upper().split(',')
-
-            if not qryset_municipios.filter(nombre=valor[1][:60], padre__nombre=valor[0][:60]).exists():
-                # si el departamento no ha sido ingresado se ingresa en la lista para crearlo
-                municipios_list.append(Regionalizacion(nombre=valor[1][:60], usuario=self.request.user, 
-                    padre=qryset_deptos.filter(nombre=valor[0][:60]).latest('id')))
-
-        Regionalizacion.objects.bulk_create(municipios_list)
-
-        return super(RegionalizacionCreateView, self).form_valid(*args, **kwargs)
-
-    def _cargar_informacion(self):
-        '''
-            Carga la información sin repetidos
-        '''
-        departamentos = list()
-        municipios = list()
-
-        sheet = load_workbook(self.request.FILES['archivo']).active
-        for linea in sheet.iter_rows(min_row=2):
-            departamento_nombre = linea[0].value
-            municipio_nombre = linea[1].value
-
-            if not departamento_nombre in departamentos:
-                departamentos.append(f'{departamento_nombre}')
-            if not f'{departamento_nombre},{municipio_nombre}' in municipios:
-                municipios.append(f'{departamento_nombre},{municipio_nombre}')
-
-        return departamentos, municipios
+        for item in data:
+            qrs_municipio = jerarquia_completa.filter(nombre=data[item]['Municipio'], padre__nombre=data[item]['Departamento'])
+            if qrs_municipio:
+                obj_update |= qrs_municipio
+            else:
+                obj_create.append(Regionalizacion(nombre=data[item]['Municipio'], padre=obj_deptos.get(nombre=data[item]['Departamento']), usuario=self.request.user))
+        obj_update.update(vigente=True)
+        Regionalizacion.objects.bulk_create(obj_create)        
 
 
 class RegionalizacionListView(PersonalListView):

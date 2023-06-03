@@ -2,9 +2,10 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm  
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
-#from django.contrib.auth import get_user_model
 
+#from django.contrib.auth import get_user_model
 #Usuario = get_user_model()
+
 from .models import Usuario, Perfil
 
 
@@ -58,7 +59,9 @@ class PerfilForm(forms.ModelForm):
         }
 
 
-class RegionalizacionUploadForm(forms.Form):
-    pais        = forms.CharField(label=_('Pais'))
-    archivo     = forms.FileField()
+class CargaArchivos(forms.Form):
+    archivo     = forms.FileField(label=_('Archivo'))
 
+
+class RegionalizacionForm(forms.Form):
+    pais        = forms.CharField(label=_('País'), max_length=60)

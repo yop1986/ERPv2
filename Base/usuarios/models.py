@@ -54,6 +54,7 @@ class Regionalizacion(models.Model):
     '''
         Información general para carga de regionalizacion
     '''
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre      = models.CharField(_('Nombre'), max_length=60)
     vigente     = models.BooleanField(_('Estado'), default=True)
     usuario     = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True)
@@ -67,15 +68,25 @@ class Regionalizacion(models.Model):
     def __str__(self):
         return self.nombre
 
-    def save(self, *args, **kwargs):
-        self.nombre = self.nombre.upper()
-        super(Regionalizacion, self).save(*args, **kwargs)
-    
-    def get_childs(self):
+    def get_hijos(self):
         return Regionalizacion.objects.filter(padre=self.id).order_by('nombre')
 
+    def get_jeraquia(self):
+        acumulativo = Regionalizacion.objects.none()
+        hijos = Regionalizacion.objects.filter(padre=self.id)
+        for hijo in hijos:
+            hijos |= hijo.get_jeraquia()
+        return acumulativo | hijos
+        
+    def inactiva_hijos(self):
+        hijos = Regionalizacion.objects.filter(padre=self.id)
+        hijos.update(vigente=False)
+        for hijo in hijos:
+            hijo.inactiva_hijos()
 
-class ParamArchivos(models.Model):
+
+
+class ParametriaArchivoEncabezado(models.Model):
     '''
         Encabezado de parametrización para cargar o generar archivos.
     '''
@@ -84,30 +95,51 @@ class ParamArchivos(models.Model):
         ('E', 'EXPORTAR'),
     ]
     EXTENSIONES = [
-        ('xlsx', 'Excel'),
-        ('csv', 'CSV'),
+        ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel (xlsx)'),
+        ('text/csv', 'CSV (csv)'),
     ]
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    archivo     = models.CharField(_('Archivo'), max_length=12, blank=True)
+    archivo     = models.CharField(_('Archivo'), max_length=60, blank=True)
+    content_type= models.CharField(_('Extensión'), choices=EXTENSIONES, max_length=90)
+    tipo        = models.CharField(_('Tipo parametrización'), choices=ACCIONES,max_length=1)
     fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
 
-    usuario     = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['archivo', 'tipo'], name='pae_unq_archivo_tipo'),
+        ]
 
-class ParamArchivosDetalle(models.Model):
+    def __str__(self):
+        return self.archivo
+
+class ParametriaArchivoDetalle(models.Model):
     CAMPO_TIPOS = [
         ('DATE', 'Fecha'),
         ('TEXT', 'Texto'),
         ('INT', 'Entero'),
         ('DEC', 'Decimal'),
+        ('BOOL', 'Booleano'),
         ('-', 'Indefinido'),
     ]
 
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     paquete     = models.CharField(_('Paquete'), max_length=60)
     modelo      = models.CharField(_('Modelo'), max_length=60)
+    campo      = models.CharField(_('Campo'), max_length=60)
+    display     = models.CharField(_('Display'), max_length=60)
     # get_tipo_display() para obtener el valor y no el código
-    tipo        = models.CharField(_('Tipo de dato'), max_length=4)
-    validacion  = models.CharField(_('Validación'), max_length=60)
+    tipo        = models.CharField(_('Tipo de dato'), choices=CAMPO_TIPOS, max_length=4)
+    validacion  = models.CharField(_('Validación'), max_length=60, blank=True)
 
-    Archivo     = models.ForeignKey('ParamArchivos', on_delete=models.RESTRICT)
+    archivo     = models.ForeignKey('ParametriaArchivoEncabezado', on_delete=models.RESTRICT)
+
+    def __str__(self):
+        return self.display
+
+    def __campo__(self):
+        return f'{self.paquete}.{self.modelo}/{self.campo}'
+
+@receiver(post_save, sender=ParametriaArchivoDetalle)
+def save_parametros_encabezado_detalle(sender, instance, **kwargs):
+    instance.archivo.save()
