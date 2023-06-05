@@ -1,15 +1,18 @@
 from django.contrib import admin
 
-from .models import Usuario, ParametriaArchivoEncabezado, ParametriaArchivoDetalle
+from .models import (Usuario, ParametriaArchivoEncabezado, ParametriaArchivoExtension, 
+   ParametriaArchivoDetalle)
 
 
 
 class ParametriaArchivoDetalleInline(admin.TabularInline):
     model = ParametriaArchivoDetalle
 
+class ParametriaArchivoExtensionInline(admin.TabularInline):
+    model = ParametriaArchivoExtension
 
 class ParametriaArchivoEncabezadoAdmin(admin.ModelAdmin):
-   inlines = [ParametriaArchivoDetalleInline,]
+   inlines = [ParametriaArchivoExtensionInline, ParametriaArchivoDetalleInline,]
 
 
 

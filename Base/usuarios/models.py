@@ -50,6 +50,8 @@ def create_usuario_perfil(sender, instance, created, **kwargs):
 def save_usuario_perfil(sender, instance, **kwargs):
     instance.perfil.save()
 
+
+
 class Regionalizacion(models.Model):
     '''
         Información general para carga de regionalizacion
@@ -71,11 +73,11 @@ class Regionalizacion(models.Model):
     def get_hijos(self):
         return Regionalizacion.objects.filter(padre=self.id).order_by('nombre')
 
-    def get_jeraquia(self):
+    def get_jerarquia(self):
         acumulativo = Regionalizacion.objects.none()
         hijos = Regionalizacion.objects.filter(padre=self.id)
         for hijo in hijos:
-            hijos |= hijo.get_jeraquia()
+            hijos |= hijo.get_jerarquia()
         return acumulativo | hijos
         
     def inactiva_hijos(self):
@@ -94,13 +96,8 @@ class ParametriaArchivoEncabezado(models.Model):
         ('C', 'CARGAR'),
         ('E', 'EXPORTAR'),
     ]
-    EXTENSIONES = [
-        ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel (xlsx)'),
-        ('text/csv', 'CSV (csv)'),
-    ]
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     archivo     = models.CharField(_('Archivo'), max_length=60, blank=True)
-    content_type= models.CharField(_('Extensión'), choices=EXTENSIONES, max_length=90)
     tipo        = models.CharField(_('Tipo parametrización'), choices=ACCIONES,max_length=1)
     fecha_creacion = models.DateField(_('Creacion'), auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(_('Actualización'), auto_now=True)
@@ -112,6 +109,29 @@ class ParametriaArchivoEncabezado(models.Model):
 
     def __str__(self):
         return self.archivo
+
+
+class ParametriaArchivoExtension(models.Model):
+    EXTENSIONES = [
+        ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel (xlsx)'),
+        ('text/csv', 'CSV (csv)'),
+    ]
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    content_type= models.CharField(_('Extensión'), choices=EXTENSIONES, max_length=90)
+
+    archivo     = models.ForeignKey('ParametriaArchivoEncabezado', on_delete=models.RESTRICT)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['archivo', 'content_type'], name='pae_unq_archivo_ctype'),
+        ]
+
+    def __str__(self):
+        return self.get_content_type_display()
+
+@receiver(post_save, sender=ParametriaArchivoExtension)
+def save_parametria_enc_detalle(sender, instance, **kwargs):
+    instance.archivo.save()
 
 class ParametriaArchivoDetalle(models.Model):
     CAMPO_TIPOS = [
@@ -141,5 +161,5 @@ class ParametriaArchivoDetalle(models.Model):
         return f'{self.paquete}.{self.modelo}/{self.campo}'
 
 @receiver(post_save, sender=ParametriaArchivoDetalle)
-def save_parametros_encabezado_detalle(sender, instance, **kwargs):
+def save_parametria_enc_detalle(sender, instance, **kwargs):
     instance.archivo.save()

@@ -158,63 +158,92 @@ class Archivo():
 		otras clases validando el tipo de archvio y la parametrización de 
 
 		  - Usuarios.models ParametriaArchivoEncabezado, ParametriaArchivoDetalle -  
-	'''
-	def __init__(self, file, content_type, parametria_detalle):
-		self.campos_extra_en_archivo = None
-		self.error_en_data = []
-		self.parametrizacion = parametria_detalle
 
-		if not file.content_type == content_type:
+		CAMPOS
+		file 					(file) 		Carga el archivo y lo instancia de acuerdo con la extension
+		campos_extra_en_archivo	(string) 	Campos en el archivo que son innecearios
+		error_en_data 			(array) 	Errores al momento de cargar la información
+		parametrizacion 		(ParametriaArchivoDetalle) Parametrización de campos (detalle archivo)
+		sheet # eliminar (solo se usa en exceles)
+	'''
+	def __init__(self, file, parametria_extensiones, parametria_detalle):
+		'''
+			PARAMETROS
+			file 					Archivo cargado desde el formulario
+			parametria_extensiones 	Arreglo con el listado de extensiones validas para el archivo
+			parametria_detalle		Objeto ParametriaArchivoDetalle (con el detalle parametrizado)
+
+			RETURN
+			None
+		'''
+		self.file 						= file
+		self.campos_extra_en_archivo 	= None
+		self.error_en_data 				= []
+		self.parametrizacion 			= parametria_detalle
+
+		if not self.file.content_type in parametria_extensiones:
 			raise ValidationError(_('Archivo no valido'))
 
-		if file.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+	def leer_archivo(self, hoja=None):
+		if self.file.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
 			### para archivos excel
-			self.sheet = load_workbook(file).active
-			self.campo_columna = self.lee_encabezados_xlsx()
-			self.valida_ordena_campos_xlsx()
-			self.data = self.leer_archivo_xlsx()
-			
-	def lee_encabezados_xlsx(self):
-		errores = []
-		campos = {}
-		for item in self.sheet[1]:
-			param = self.parametrizacion.get(display=item.value)
-			if not item.value in campos:
-				campos[item.value] = {
+			self.leer_archivo_xlsx(hoja)
+	
+	def obtiene_hoja(self, hoja=None):
+		if hoja:
+			return load_workbook(self.file)[hoja]
+		else:
+			return load_workbook(self.file).active		
+	
+	def lee_encabezados_xlsx(self, hoja=None, linea_encabezado=1):
+		errores, campos_extra, campos_final = [], [], {}
+		parametrizacion = self.parametrizacion
+
+		encabezados = [item for item in self.obtiene_hoja(hoja)[linea_encabezado]]
+
+		for item in encabezados:
+			parametro = self.parametrizacion.filter(display=item.value)
+			if parametro and item.value in campos_final:
+				errores.append(ValidationError(_('Campo parametrizado %(campo)s repetido en el archivo (columna: %(columna)s)'), params={'campo': item.value, 'columna': item.col_idx}))
+			elif parametro:
+				campos_final[item.value] = {
 					'posicion': item.col_idx-1,
-					'tipo': param.tipo,
-					'validacion': param.validacion if param.validacion else None,
+					'tipo': parametro[0].tipo,
+					'validacion': parametro[0].validacion if parametro[0].validacion else None,
 				}
-			else:
-				errores.append(ValidationError(_('Campo repetido en el archivo %(campo)s (columna: %(columna)s)'), params={'campo': item.value, 'columna': item.col_idx}))
+				parametrizacion = parametrizacion.exclude(display=item.value)
+			else: 
+				campos_extra.append(f'{item.value} ({item.col_idx})')
+
+		self.campos_extra_en_archivo = f'Campos extra en el archivo: {", ".join(campos_extra)}' if campos_extra else None
+
+		if parametrizacion.count()>0:
+			errores.append(
+				ValidationError(_('Campos no parametrizados: %(campo)s'), 
+				params={'campo': ', '.join(parametrizacion.values_list('display', flat=True))})
+			)
+
 		if errores:
 			raise ValidationError(errores)
-		return campos
 
-	def valida_ordena_campos_xlsx(self):
-		campos_archivo = self.campo_columna.copy()
-		parametros = self.parametrizacion
-		for campo in self.campo_columna:
-			if parametros.filter(display=campo):
-				parametros = parametros.exclude(display=campo)
-				del campos_archivo[campo]
+		return campos_final
 
-		self.campos_extra_en_archivo = f'Campos extra en el archivo: {", ".join(campos_archivo)}' if campos_archivo else None
-		
-		if parametros:
-			raise ValidationError(_('Hace falta en el archivo los campos: %(campos)s'), params={'campos':' '.join(parametros.values_list('display', flat=True))})
+	def leer_archivo_xlsx(self, hoja=None, linea_encabezado=1):
+		linea_data, data = linea_encabezado+1, {}
 
-	def leer_archivo_xlsx(self):
-		data = {}
-		for index, linea in enumerate(self.sheet.iter_rows(min_row=2)):
+		encabezados = self.lee_encabezados_xlsx(hoja, linea_encabezado)
+
+		for index, linea in enumerate(self.obtiene_hoja(hoja).iter_rows(min_row=linea_data)):
 			detalle = {}
-			for k, v in self.campo_columna.items():
-				valido, detalle[k] = self.valida_tipo_dato(linea[v['posicion']].value, v['tipo'], validacion=v['validacion'])
-
-			if not valido:
-				self.error_en_data.append(f'Error en la linea: {index+2} - Detalle: {detalle}')
+			registro_valido = True
+			for k, v in encabezados.items():
+				valido, detalle[k.upper()] = self.valida_tipo_dato(linea[v['posicion']].value, v['tipo'], validacion=v['validacion'])
+				if not valido:
+					registro_valido = False
+			if not registro_valido:
+				self.error_en_data.append(f'Error en la linea: {index+linea_data} - Detalle: {detalle}')
 				continue
-			data[index] = detalle
+			data[index+linea_data] = detalle
 		return data
 
 	def valida_tipo_dato(self, valor, tipo, **kwargs):

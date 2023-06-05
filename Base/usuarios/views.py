@@ -6,13 +6,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import (LoginView, LogoutView, PasswordResetConfirmView, 
     PasswordResetView, PasswordResetDoneView, PasswordResetCompleteView, PasswordChangeView)
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.urls import reverse_lazy
 
 from .app_funciones import Archivo, Configuraciones, ObjetoDinamico, busqueda_nombres
-from .models import Usuario, Regionalizacion, ParametriaArchivoEncabezado as ArchivoEnc, ParametriaArchivoDetalle as ArchivoDet
+from .models import (Usuario, Regionalizacion, ParametriaArchivoEncabezado as ArchivoEnc, 
+    ParametriaArchivoExtension as ArchivoExt, ParametriaArchivoDetalle as ArchivoDet)
 from .forms import CustomUserCreationForm, CustomUserUpdateForm, PerfilForm, RegionalizacionForm, CargaArchivos
 from .personal_views import (PersonalTemplateView, PersonalListView, PersonalFormView, 
     PersonalUpdateView)
@@ -317,55 +319,94 @@ class RegionalizacionCreateView(PersonalFormView):
     def form_valid(self, form, *args, **kwargs):
         nombre_pais = self.request.POST["pais"]
         try:
-            pais = Regionalizacion.objects.get(nombre__iexact=nombre_pais, padre__isnull=True)
+            pais = Regionalizacion.objects.get(nombre=nombre_pais, padre__isnull=True)
+            pais.vigente=True
+            pais.usuario = self.request.user
+            pais.save()
         except Exception as e:
             pais = Regionalizacion.objects.create(nombre=nombre_pais, usuario=self.request.user)
             
-        jerarquia_completa = pais.get_jeraquia()
+        jerarquia_completa = pais.get_jerarquia()
         jerarquia_completa.update(vigente=False)
 
         arch_enc = ArchivoEnc.objects.get(archivo__iexact='Carga_Regionalizacion', tipo='C')
+        arch_ext = ArchivoExt.objects.filter(archivo=arch_enc).values_list('content_type', flat=True)
         arch_det = ArchivoDet.objects.filter(archivo=arch_enc)
         
         try:
-            archivo = Archivo(self.request.FILES["archivo"], arch_enc.content_type, arch_det)
-            self.procesa_data(pais, jerarquia_completa, archivo.data)
-            print(archivo.data)
+            archivo = Archivo(self.request.FILES["archivo"], arch_ext, arch_det)
+            data    = archivo.leer_archivo_xlsx()
             messages.add_message(self.request, messages.WARNING, archivo.campos_extra_en_archivo)
-            messages.add_message(self.request, messages.WARNING, archivo.error_en_data)
-        except Exception as ex:
-            for e in ex:
-                messages.add_message(self.request, messages.ERROR, e)
-            return self.form_invalid(form)
 
+            for error in archivo.error_en_data:
+                messages.add_message(self.request, messages.ERROR, error)
+            
+            self.procesa_data(pais, jerarquia_completa, data)
+        except ObjectDoesNotExist as e:
+            pass
+        except ValidationError as ex:
+            for e in ex:
+                    messages.add_message(self.request, messages.ERROR, e)
+        except Exception as ex:
+            messages.add_message(self.request, messages.ERROR, ex)
+        
         return self.form_invalid(form)
 
     def procesa_data(self, pais, jerarquia_completa, data):
-        obj_create = []
+        errores = []
         obj_update = Regionalizacion.objects.none()
+        obj_create, create_flag = [], []
 
+        #DEPARTAMENTOS
         for item in data:
-            qrs_depto = jerarquia_completa.filter(nombre=data[item]['Departamento'], padre=pais)
-            if qrs_depto:
+            print(f'depto {item}')
+            qrs_depto = jerarquia_completa.filter(nombre=data[item]['DEPARTAMENTO'], padre=pais)
+            depto = obj_update.filter(nombre=data[item]['DEPARTAMENTO'], padre=pais)
+            if qrs_depto and not depto:
                 obj_update |= qrs_depto
-            else:
-                obj_create.append(Regionalizacion(nombre=data[item]['Departamento'], padre=pais, usuario=self.request.user))
-
+            elif not depto and data[item]['DEPARTAMENTO'] not in create_flag:
+                try:
+                    obj = Regionalizacion(nombre=data[item]['DEPARTAMENTO'], padre=pais, usuario=self.request.user)
+                    obj.full_clean()
+                    create_flag.append(data[item]['DEPARTAMENTO'])
+                    obj_create.append(obj)
+                except ValidationError as e:
+                    errores.append(ValidationError(_('Linea: %(item)s: Departamento %(error)s)'), params={'item': item, 'error': e}))
+                    
         obj_update.update(vigente=True, usuario=self.request.user)
         Regionalizacion.objects.bulk_create(obj_create)
 
-        obj_create = []
+        #MUNICIPIOS
         obj_update = Regionalizacion.objects.none()
         obj_deptos = Regionalizacion.objects.filter(padre=pais, vigente=True)
-        
+
+        obj_create = []
+        create_flag = []
         for item in data:
-            qrs_municipio = jerarquia_completa.filter(nombre=data[item]['Municipio'], padre__nombre=data[item]['Departamento'])
-            if qrs_municipio:
-                obj_update |= qrs_municipio
+            print(f'muni {item}')
+            depto = obj_deptos.filter(nombre=data[item]['DEPARTAMENTO'])
+            if depto:
+                qrs_municipio = jerarquia_completa.filter(nombre=data[item]['MUNICIPIO'], padre=depto[0])
+                municipio = obj_update.filter(nombre=data[item]['MUNICIPIO'], padre=depto[0])
             else:
-                obj_create.append(Regionalizacion(nombre=data[item]['Municipio'], padre=obj_deptos.get(nombre=data[item]['Departamento']), usuario=self.request.user))
+                municipio = qrs_municipio = None
+            if qrs_municipio and not municipio:
+                obj_update |= qrs_municipio
+            elif not municipio and f"{data[item]['DEPARTAMENTO']}, {data[item]['MUNICIPIO']}" not in create_flag:
+                try:
+                    print(f"{data[item]['DEPARTAMENTO']}, {data[item]['MUNICIPIO']}")
+                    obj = Regionalizacion(nombre=data[item]['MUNICIPIO'], padre=obj_deptos.get(nombre=data[item]['DEPARTAMENTO']), usuario=self.request.user)
+                    obj.full_clean()
+                    create_flag.append(f"{data[item]['DEPARTAMENTO']}, {data[item]['MUNICIPIO']}")
+                    obj_create.append(obj)
+                except ObjectDoesNotExist as e:
+                    print(e)
+                except ValidationError as e:
+                    errores.append(ValidationError(_('Linea: %(item)s: Municipio %(error)s)'), params={'item': item, 'error': e}))
         obj_update.update(vigente=True)
-        Regionalizacion.objects.bulk_create(obj_create)        
+        Regionalizacion.objects.bulk_create(obj_create)
+        if errores:
+            raise ValidationError(errores)
 
 
 class RegionalizacionListView(PersonalListView):
