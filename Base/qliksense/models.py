@@ -47,7 +47,6 @@ class Stream(models.Model):
 			modelos = modelos.filter(**filtro)
 		return modelos.order_by(orden)
 
-
 class Modelo(models.Model):
 	"""Modelo: información general de los modelos"""
 	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -82,7 +81,6 @@ class Modelo(models.Model):
 			campos = campos.filter(**filtro)
 		return campos.order_by(orden)
 
-
 class Campo(models.Model):
 	""" Campo: informacion de los campos finales de cada modelo """
 	CAMPO_TIPOS = [
@@ -104,3 +102,78 @@ class Campo(models.Model):
 
 	def __str__(self):
 		return f'{self.modelo}, {self.nombre}'
+
+
+
+class Tipo_Licencia(models.Model):
+	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	descripcion = models.CharField(_('Descripción'), max_length=15)
+	
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=['descripcion'], name='tl_unq_descripcion'),
+		]
+
+	def __str__(self):
+		return self.descripcion
+
+class Gerencia(models.Model):
+	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	nombre 		= models.CharField(_('Nombre'), max_length=90)
+	cantidad	= models.PositiveSmallIntegerField(_('Cantidad'))
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=['nombre'], name='ge_unq_nombre'),
+		]
+
+	def __str__(self):
+		return self.nombre
+
+	def cantidad_disponibles(self):
+		return self.cantidad - UsuarioQS.objects.filter(vigente, tlicencia=self).count()
+
+class PropiedadPersonalizada(models.Model):
+	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	nombre 		= models.CharField(_('Nombre'), max_length=90)
+	valor 		= models.CharField(_('valor'), max_length=90)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=['nombre', 'valor'], name='pr_unq_nombre_valor'),
+		]
+
+	def __str__(self):
+		return f'{self.nombre} - {self.valor}'
+
+class UsuarioQS(models.Model):
+	CAMPO_TIPOS = [
+		('usr', 'usr'),
+		('out', 'out'),
+	]
+
+	id 			= models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	codigo 		= models.PositiveSmallIntegerField(_('Codigo'))
+	nombre 		= models.CharField(_('Nombre'), max_length=90)
+	correo 		= models.CharField(_('Nombre'), max_length=90, blank=True, null=True)
+	# get_tipo_display() para obtener el valor y no el código
+	tipo 		= models.CharField(_('Tipo'), max_length=4, choices=CAMPO_TIPOS, blank=False, null=False)
+	vigente 	= models.BooleanField(_('Estado'), default=True)
+	creado 		= models.DateField(_('Creado'), auto_now_add=True)
+	actualizado = models.DateTimeField(_('Actualizado'), auto_now=True)
+
+	tlicencia 	= models.ForeignKey(Tipo_Licencia, on_delete=models.RESTRICT)
+	gerencia 	= models.ForeignKey(Gerencia, on_delete=models.RESTRICT)
+	propiedades = models.ManyToManyField(PropiedadPersonalizada)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=['codigo'], name='usr_unq_codigo'),
+			models.UniqueConstraint(fields=['correo'], name='usr_unq_correo'),
+		]
+
+	def __str__(self):
+		return f'{self.nombre} ({self.codigo})'
+
+	def get_usuario(self):
+		return f'{self.tipo}{self.codigo.zfill(6)}'
